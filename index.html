@@ -10,7 +10,7 @@
   body { background:var(--bg); color:var(--text); font-family:'Syne', sans-serif; padding:24px 16px 80px; }
   h1 { font-size:2rem; font-weight:800; text-align:center; color:var(--accent); margin-bottom:4px; }
   .subtitle { text-align:center; color:var(--muted); font-size:0.75rem; margin-bottom:28px; }
-  .nav-tab { background:var(--surface); border:1px solid #252a3a; border-radius:10px; color:#888; padding:8px 4px; cursor:pointer; font-weight:700; flex:1; font-size: 0.7rem; text-transform: uppercase; }
+  .nav-tab { background:var(--surface); border:1px solid #252a3a; border-radius:10px; color:#888; padding:8px 4px; cursor:pointer; font-weight:700; flex:1; font-size: 0.65rem; text-transform: uppercase; }
   .nav-tab.active { background-color:var(--accent) !important; color:#0d0f14 !important; }
   .card { background:var(--surface); border:1px solid #252a3a; border-radius:14px; padding:22px; margin-bottom:20px; max-width:680px; margin-left:auto; margin-right:auto; }
   .player-row { display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid #252a3a; border-radius:10px; padding:10px 14px; margin-bottom:8px; }
@@ -21,11 +21,11 @@
   .transfer-card { background:var(--surface2); border-left:4px solid var(--accent); padding:12px; margin-bottom:10px; border-radius:4px; font-family:'JetBrains Mono'; position: relative; }
   .payer { color:var(--red); font-weight:600; }
   .receiver { color:var(--green); font-weight:600; }
-  .pay-btn-sm { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 4px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
+  .pay-btn-sm { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 4px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
   .inline-pay { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #252a3a; }
   .inline-pay.show { display: grid; }
   .pay-btn-full { grid-column: span 2; background: var(--green); color: #000; border: none; padding: 8px; border-radius: 6px; font-weight: 800; cursor: pointer; }
-  .history-item { background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:8px; border-left: 3px solid #444; }
+  .history-item { background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:8px; border-left: 3px solid #444; font-family:'JetBrains Mono'; }
   .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface2); border:1px solid #252a3a; border-radius:10px; padding:10px 20px; z-index:999; opacity:0; transition:0.3s; pointer-events:none;}
   .toast.show { opacity:1; }
   .standings-table { width:100%; color:white; border-collapse: collapse; font-family:'JetBrains Mono'; font-size:0.85rem; margin-bottom: 20px; }
@@ -36,7 +36,7 @@
 <body>
 
 <h1>💸 Settlement</h1>
-<p class="subtitle">google sheets · audit log enabled</p>
+<p class="subtitle">google sheets · real-time netting</p>
 
 <div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px;">
   <button class="nav-tab active" id="btn-session" onclick="show('session')">🎮 Session</button>
@@ -47,7 +47,7 @@
 
 <div id="page-session" class="card">
   <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
-  <div id="playersGrid">Loading...</div>
+  <div id="playersGrid">Loading players...</div>
   <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
   <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled>Save Session</button>
 </div>
@@ -100,18 +100,20 @@ function toast(msg, success) {
   setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// Replace the old Promise-based call function with this in your GitHub index.html:
+// THE BRIDGE: Talk to Google Sheets from GitHub
 async function call(action, payload) {
-  const scriptUrl = 'PASTE_YOUR_COPIED_WEB_APP_URL_HERE';
-  const url = `${scriptUrl}?action=${action}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
-  
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycbxSk89VMMvmPVxNxscJ1j5D-X0kqdaJklCnkaJuyyzqNWm8bBLAVgvHvYX_PpRsh7hupA/exec'; 
+  const query = `action=${action}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+  const finalUrl = `${scriptUrl}?${query}`;
+
   try {
-    const response = await fetch(url);
+    const response = await fetch(finalUrl);
+    if (!response.ok) throw new Error('Network error');
     const data = await response.json();
     if (data.error) throw data.error;
     return data;
   } catch (err) {
-    console.error("API Error:", err);
+    console.error("Connection failed:", err);
     toast("Connection Error", false);
     throw err;
   }
@@ -136,13 +138,15 @@ function showSub(s) {
 function togglePayForm(i) { document.getElementById(`pay-form-${i}`).classList.toggle('show'); }
 
 async function loadPlayers() {
-  players = await call('getPlayers');
-  const grid = document.getElementById('playersGrid'), gList = document.getElementById('groupList');
-  grid.innerHTML = ''; gList.innerHTML = '';
-  players.forEach(p => {
-    grid.innerHTML += `<div class="player-row" id="row-${p.id}"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"> <button onclick="removeRow('${p.id}')" style="background:none; border:none; color:#666; cursor:pointer;">✕</button></div>`;
-    gList.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
-  });
+  try {
+    players = await call('getPlayers');
+    const grid = document.getElementById('playersGrid'), gList = document.getElementById('groupList');
+    grid.innerHTML = ''; gList.innerHTML = '';
+    players.forEach(p => {
+      grid.innerHTML += `<div class="player-row" id="row-${p.id}"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"> <button onclick="removeRow('${p.id}')" style="background:none; border:none; color:#666; cursor:pointer;">✕</button></div>`;
+      gList.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
+    });
+  } catch(e) { }
 }
 
 function removeRow(id) { document.getElementById('row-'+id).remove(); updateBalance(); }
@@ -228,7 +232,6 @@ async function loadPaymentLog() {
   const list = document.getElementById('paymentLogList');
   list.innerHTML = '';
   log.forEach(p => {
-    // FIX: Using from_player and to_player to match sheet headers
     list.innerHTML += `<div class="history-item"><div style="font-size:0.7rem; color:var(--muted);">${p.date}</div><span class="payer">${p.from_player}</span> → <span class="receiver">${p.to_player}</span>: <strong>$${p.amount}</strong><br><small>${p.note || ''}</small></div>`;
   });
 }
