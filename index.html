@@ -103,7 +103,13 @@ function toast(msg, success) {
 // THE BRIDGE: Talk to Google Sheets from GitHub
 async function call(action, payload) {
   const scriptUrl = 'https://script.google.com/macros/s/AKfycbxSk89VMMvmPVxNxscJ1j5D-X0kqdaJklCnkaJuyyzqNWm8bBLAVgvHvYX_PpRsh7hupA/exec'; 
-  const query = `action=${action}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+  
+  // FIX: Only send payload data if it actually exists
+  let query = `action=${action}`;
+  if (payload !== undefined) {
+    query += `&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+  }
+  
   const finalUrl = `${scriptUrl}?${query}`;
 
   try {
