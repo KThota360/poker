@@ -104,7 +104,6 @@ function toast(msg, success) {
 async function call(action, payload) {
   const scriptUrl = 'https://script.google.com/macros/s/AKfycbxSk89VMMvmPVxNxscJ1j5D-X0kqdaJklCnkaJuyyzqNWm8bBLAVgvHvYX_PpRsh7hupA/exec'; 
   
-  // FIX: Only send payload data if it actually exists
   let query = `action=${action}`;
   if (payload !== undefined) {
     query += `&payload=${encodeURIComponent(JSON.stringify(payload))}`;
@@ -155,102 +154,4 @@ async function loadPlayers() {
   } catch(e) { }
 }
 
-function removeRow(id) { document.getElementById('row-'+id).remove(); updateBalance(); }
-
-function updateBalance() {
-  let total = 0, count = 0;
-  document.querySelectorAll('.amt').forEach(el => { total += parseFloat(el.value) || 0; count++; });
-  const el = document.getElementById('balanceIndicator'), btn = document.getElementById('calcBtn');
-  const ok = Math.abs(total) < 0.01;
-  el.style.color = ok ? 'var(--green)' : 'var(--red)';
-  el.textContent = ok ? `✓ Balanced (${count} players)` : `Unbalanced: ${total > 0 ? 'Over' : 'Short'} by $${Math.abs(total).toFixed(2)}`;
-  btn.disabled = !ok || count < 2;
-}
-
-async function submitSession() {
-  const pData = [];
-  document.querySelectorAll('.amt').forEach(el => {
-    const val = parseFloat(el.value) || 0;
-    if(val !== 0) pData.push({ name: el.dataset.name, amount: val });
-  });
-  await call('addSession', { name: document.getElementById('sessionNameInput').value, players: pData });
-  toast('Saved!', true);
-  document.getElementById('sessionNameInput').value = '';
-  loadPlayers();
-  show('results');
-}
-
-async function loadSessions() {
-  const data = await call('getSessions');
-  sessions = data.sessions || [];
-  renderResults(data);
-}
-
-function renderResults(data) {
-  const tList = document.getElementById('thisList'), oList = document.getElementById('overallList'), hList = document.getElementById('historyList'), header = document.getElementById('latestHeader'), sTable = document.getElementById('standingsTableBody');
-  const today = new Date().toISOString().split('T')[0];
-  oList.innerHTML = ''; tList.innerHTML = ''; hList.innerHTML = ''; sTable.innerHTML = '';
-
-  (data.standings || []).forEach(p => {
-    const color = p.lifetime > 0 ? 'var(--green)' : (p.lifetime < 0 ? 'var(--red)' : '#888');
-    sTable.innerHTML += `<tr><td>${p.name}</td><td style="text-align:right; color:${color}">${p.lifetime > 0 ? '+' : ''}${p.lifetime.toFixed(2)}</td></tr>`;
-  });
-
-  (data.efficientSettlements || []).forEach((s, i) => {
-    oList.innerHTML += `
-      <div class="transfer-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-          <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
-        </div>
-        <div class="inline-pay" id="pay-form-${i}">
-          <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}">
-          <input type="date" id="pay-date-${i}" value="${today}">
-          <input type="text" id="pay-note-${i}" placeholder="Note..." style="grid-column: span 2">
-          <button class="pay-btn-full" onclick="processPayment('${s.from}', '${s.to}', ${i})">CONFIRM</button>
-        </div>
-      </div>`;
-  });
-
-  if(sessions.length > 0) {
-    const last = sessions[sessions.length-1];
-    header.innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${last.date}</small>`;
-    last.players.forEach(p => { if(p.amount !== 0) tList.innerHTML += `<div style="font-size:0.85rem; padding:4px 0;">${p.name}: <span style="color:${p.amount > 0 ? 'var(--green)' : 'var(--red)'}">${p.amount > 0 ? '+' : ''}${p.amount}</span></div>`; });
-  }
-
-  [...sessions].reverse().forEach(s => {
-    const sc = s.players.map(p => `<span style="font-size:0.7rem; color:${p.amount > 0 ? '#3de8a0' : '#ff5c6a'}; margin-right:8px;">${p.name}: ${p.amount > 0 ? '+' : ''}${p.amount}</span>`).join('');
-    hList.innerHTML += `<div class="history-item"><strong>${s.name}</strong><br>${sc}</div>`;
-  });
-}
-
-async function processPayment(from, to, i) {
-  const amt = parseFloat(document.getElementById(`pay-amt-${i}`).value);
-  const date = document.getElementById(`pay-date-${i}`).value;
-  const note = document.getElementById(`pay-note-${i}`).value;
-  await call('addPayment', { from, to, amount: amt, date, note });
-  toast('Paid!', true);
-  loadSessions();
-}
-
-async function loadPaymentLog() {
-  const log = await call('getPayments');
-  const list = document.getElementById('paymentLogList');
-  list.innerHTML = '';
-  log.forEach(p => {
-    list.innerHTML += `<div class="history-item"><div style="font-size:0.7rem; color:var(--muted);">${p.date}</div><span class="payer">${p.from_player}</span> → <span class="receiver">${p.to_player}</span>: <strong>$${p.amount}</strong><br><small>${p.note || ''}</small></div>`;
-  });
-}
-
-async function addPlayer() {
-  const name = document.getElementById('newPlayerName').value;
-  if(!name) return;
-  await call('addPlayer', { name });
-  document.getElementById('newPlayerName').value = '';
-  loadPlayers();
-}
-
-loadPlayers();
-</script>
-</body>
-</html>
+function removeRow(id
