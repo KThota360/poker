@@ -33,6 +33,18 @@
   .standings-table { width:100%; color:white; border-collapse: collapse; font-family:'JetBrains Mono'; font-size:0.85rem; margin-bottom: 20px; }
   .standings-table th { border-bottom:1px solid #333; color:var(--accent); text-align:left; padding:8px; }
   .standings-table td { padding:8px; border-bottom:1px solid #222; }
+  .remove-x {
+    cursor: pointer;
+    color: #888;
+    font-weight: bold;
+    font-size: 1.2rem;
+    padding-left: 10px;
+    transition: color 0.2s;
+}
+
+.remove-x:hover {
+    color: var(--red); /* Turns red when you hover over it */
+}
 </style>
 </head>
 <body>
@@ -163,19 +175,36 @@ function computeSettlements(balMap) {
 }
 
 async function submitSession() {
-  const pData = [];
-  document.querySelectorAll('.amt').forEach(el => {
-    const val = parseFloat(el.value) || 0;
-    if(val !== 0) pData.push({ name: el.dataset.name, amount: val });
-  });
-  await db.collection("sessions").add({
-    name: document.getElementById('sessionNameInput').value || ("Session " + new Date().toLocaleDateString()),
-    players: pData,
-    created_at: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  toast("Session Saved", true);
-  document.getElementById('sessionNameInput').value = '';
-  show('results');
+    const pData = [];
+    document.querySelectorAll('.amt').forEach(el => {
+        const val = el.value;
+        // Check if the input isn't empty (allows 0 but skips blank fields)
+        if(val !== "") {
+            pData.push({ 
+                name: el.dataset.name, 
+                amount: parseFloat(val) || 0 
+            });
+        }
+    });
+
+    if (pData.length === 0) {
+        toast("No players added to session", false);
+        return;
+    }
+
+    await db.collection("sessions").add({
+        name: document.getElementById('sessionNameInput').value || ("Session " + new Date().toLocaleDateString()),
+        players: pData,
+        created_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    toast("Session Saved", true);
+    document.getElementById('sessionNameInput').value = '';
+    
+    // Clear inputs for next time
+    document.querySelectorAll('.amt').forEach(el => el.value = '');
+    
+    show('results');
 }
 
 async function addPlayer() {
@@ -219,20 +248,41 @@ function renderPaymentLog() {
 }
 
 function renderPlayers() {
-  const grid = document.getElementById('playersGrid'), list = document.getElementById('groupList');
-  grid.innerHTML = ''; list.innerHTML = '';
-  players.forEach(p => {
-    grid.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"></div>`;
-    list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
-  });
+    const grid = document.getElementById('playersGrid'),
+          list = document.getElementById('groupList');
+    grid.innerHTML = '';
+    list.innerHTML = '';
+    players.forEach(p => {
+        grid.innerHTML += `
+            <div class="player-row" id="row-${p.name}">
+                <span class="player-name-label">${p.name}</span>
+                <input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()">
+                <span class="remove-x" onclick="removePlayerFromSession('${p.name}')">×</span>
+            </div>`;
+        list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
+    });
 }
-
+  
+function removePlayerFromSession(name) {
+    const row = document.getElementById(`row-${name}`);
+    const input = row.querySelector('.amt');
+    input.value = ""; // Clear input so it's ignored by updateBalance
+    row.style.display = 'none'; // Hide the row
+    updateBalance(); // Recalculate the total
+}
 function updateBalance() {
-  let total = 0, count = 0;
-  document.querySelectorAll('.amt').forEach(el => { total += parseFloat(el.value) || 0; count++; });
-  const ok = Math.abs(total) < 0.01;
-  document.getElementById('balanceIndicator').textContent = ok ? `✓ Balanced (${count} players)` : `Unbalanced ($${total.toFixed(2)})`;
-  document.getElementById('calcBtn').disabled = !ok || count < 2;
+    let total = 0, count = 0;
+    document.querySelectorAll('.amt').forEach(el => {
+        if(el.value !== "") { // Only count players who have an entry
+            total += parseFloat(el.value) || 0;
+            count++;
+        }
+    });
+    const ok = Math.abs(total) < 0.01;
+    document.getElementById('balanceIndicator').textContent = ok ? 
+        `✓ Balanced (${count} players)` : 
+        `Unbalanced ($${total.toFixed(2)})`;
+    document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
 
 function renderResults(lifetime, balance) {
