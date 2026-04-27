@@ -45,6 +45,14 @@
 .remove-x:hover {
     color: var(--red); /* Turns red when you hover over it */
 }
+  .unbalanced-text {
+    color: var(--red);
+    font-weight: 800;
+}
+.balanced-text {
+    color: var(--green);
+    font-weight: 800;
+}
 </style>
 </head>
 <body>
@@ -270,21 +278,29 @@ function removePlayerFromSession(name) {
     row.style.display = 'none'; // Hide the row
     updateBalance(); // Recalculate the total
 }
+  
 function updateBalance() {
     let total = 0, count = 0;
     document.querySelectorAll('.amt').forEach(el => {
-        if(el.value !== "") { // Only count players who have an entry
+        if(el.value !== "") {
             total += parseFloat(el.value) || 0;
             count++;
         }
     });
+
+    const indicator = document.getElementById('balanceIndicator');
     const ok = Math.abs(total) < 0.01;
-    document.getElementById('balanceIndicator').textContent = ok ? 
-        `✓ Balanced (${count} players)` : 
-        `Unbalanced ($${total.toFixed(2)})`;
+    
+    if (ok) {
+        indicator.innerHTML = `<span class="balanced-text">✓ Balanced (${count} players)</span>`;
+    } else {
+        // Show + or - explicitly
+        const diffLabel = total > 0 ? `+${total.toFixed(2)}` : total.toFixed(2);
+        indicator.innerHTML = `<span class="unbalanced-text">⚠ Unbalanced (${diffLabel})</span>`;
+    }
+
     document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
-
 function renderResults(lifetime, balance) {
   const sBody = document.getElementById('standingsTableBody');
   if (sBody) {
