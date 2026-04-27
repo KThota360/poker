@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Settlement Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
   :root { --bg:#0d0f14; --surface:#151820; --surface2:#1c2030; --accent:#f0c040; --red:#ff5c6a; --green:#3de8a0; --text:#e8eaf2; --muted:#6b7280; }
   body { background:var(--bg); color:var(--text); font-family:'Syne', sans-serif; padding:24px 16px 80px; }
@@ -35,93 +37,197 @@
 </head>
 <body>
 
-<h1>💸 Settlement</h1>
-<p class="subtitle">google sheets · real-time netting</p>
+<h1>💸 Poker Settlements</h1>
+<p class="subtitle">powered by firebase · instant sync</p>
 
-<div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px;">
-  <button class="nav-tab active" id="btn-session" onclick="show('session')">🎮 Session</button>
-  <button class="nav-tab" id="btn-results" onclick="show('results')">📊 Results</button>
-  <button class="nav-tab" id="btn-log" onclick="show('log')">💰 Payments</button>
-  <button class="nav-tab" id="btn-players" onclick="show('players')">👥 Players</button>
+<div id="login-screen" class="card" style="text-align:center; max-width:320px; margin-top:50px;">
+  <h2 style="color:var(--accent)">Security Check</h2>
+  <p style="font-size:0.8rem; color:var(--muted)">Enter group PIN to continue</p>
+  <input type="password" id="pinInput" placeholder="••••" style="text-align:center; font-size:1.5rem; letter-spacing:8px; width:100%; margin-bottom:15px; box-sizing:border-box;">
+  <button class="calc-btn" onclick="checkPin()" style="margin-top:0">Unlock App</button>
+  <p id="loginError" style="color:var(--red); font-size:0.75rem; display:none; margin-top:10px;">Incorrect PIN</p>
 </div>
 
-<div id="page-session" class="card">
-  <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
-  <div id="playersGrid">Loading players...</div>
-  <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
-  <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled>Save Session</button>
-</div>
-
-<div id="page-results" class="card" style="display:none;">
-  <div style="display:flex; gap:2px; margin-bottom:16px;">
-    <button class="nav-tab active" id="tabBtn-standings" onclick="showSub('standings')" style="font-size:0.6rem">Standings</button>
-    <button class="nav-tab" id="tabBtn-overall" onclick="showSub('overall')" style="font-size:0.6rem">Settlements</button>
-    <button class="nav-tab" id="tabBtn-this" onclick="showSub('this')" style="font-size:0.6rem">Latest Session</button>
-    <button class="nav-tab" id="tabBtn-history" onclick="showSub('history')" style="font-size:0.6rem">History</button>
-  </div>
-  
-  <div id="sub-standings">
-    <div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">🏆 Lifetime Standings</div>
-    <table class="standings-table">
-      <thead><tr><th>Player</th><th style="text-align:right">Total Win/Loss</th></tr></thead>
-      <tbody id="standingsTableBody"></tbody>
-    </table>
+<div id="main-app" style="display:none;">
+  <div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px;">
+    <button class="nav-tab active" id="btn-session" onclick="show('session')">🎮 Session</button>
+    <button class="nav-tab" id="btn-results" onclick="show('results')">📊 Results</button>
+    <button class="nav-tab" id="btn-log" onclick="show('log')">💰 Payments</button>
+    <button class="nav-tab" id="btn-players" onclick="show('players')">👥 Players</button>
   </div>
 
-  <div id="sub-overall" style="display:none;">
-    <div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">💰 Current Debt</div>
-    <div id="overallList"></div>
+  <div id="page-session" class="card">
+    <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
+    <div id="playersGrid">Loading...</div>
+    <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
+    <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled>Save Session</button>
   </div>
 
-  <div id="sub-this" style="display:none;"><div id="latestHeader" style="margin-bottom:10px;"></div><div id="thisList"></div></div>
-  <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
-</div>
+  <div id="page-results" class="card" style="display:none;">
+    <div style="display:flex; gap:2px; margin-bottom:16px;">
+      <button class="nav-tab active" id="tabBtn-standings" onclick="showSub('standings')" style="font-size:0.6rem">Standings</button>
+      <button class="nav-tab" id="tabBtn-overall" onclick="showSub('overall')" style="font-size:0.6rem">Settlements</button>
+      <button class="nav-tab" id="tabBtn-this" onclick="showSub('this')" style="font-size:0.6rem">Latest</button>
+      <button class="nav-tab" id="tabBtn-history" onclick="showSub('history')" style="font-size:0.6rem">History</button>
+    </div>
+    <div id="sub-standings"><table class="standings-table"><thead><tr><th>Player</th><th style="text-align:right">Total</th></tr></thead><tbody id="standingsTableBody"></tbody></table></div>
+    <div id="sub-overall" style="display:none;"><div id="overallList"></div></div>
+    <div id="sub-this" style="display:none;"><div id="latestHeader" style="margin-bottom:10px;"></div><div id="thisList"></div></div>
+    <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
+  </div>
 
-<div id="page-log" class="card" style="display:none;">
-  <h3 style="margin-top:0; color:var(--accent)">Payment Log</h3>
-  <div id="paymentLogList"></div>
-</div>
-
-<div id="page-players" class="card" style="display:none;">
-  <div id="groupList"></div>
-  <input type="text" id="newPlayerName" placeholder="New Player Name" style="width:100%; margin-top:10px; box-sizing:border-box;">
-  <button onclick="addPlayer()" style="margin-top:10px; width:100%; background:var(--accent); color:#000; font-weight:bold; border:none; padding:12px; border-radius:8px; cursor:pointer;">Add Player</button>
+  <div id="page-log" class="card" style="display:none;"><div id="paymentLogList"></div></div>
+  <div id="page-players" class="card" style="display:none;"><div id="groupList"></div><input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;"><button class="calc-btn" onclick="addPlayer()">Add Player</button></div>
 </div>
 
 <div id="toast" class="toast"></div>
 
 <script>
-let players = [], sessions = [];
+// --- FIREBASE CONFIG ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDuPM_MChOtI58CN7Em91NC2ujQCZzScjE",
+  authDomain: "poker-settlement-12cb2.firebaseapp.com",
+  projectId: "poker-settlement-12cb2",
+  storageBucket: "poker-settlement-12cb2.firebasestorage.app",
+  messagingSenderId: "305943610414",
+  appId: "1:305943610414:web:23e8d0823cf2b43938cbbf"
+};
 
-function toast(msg, success) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.style.color = success ? '#3de8a0' : '#ff5c6a';
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const PIN_KEY = "poker_pin";
+
+// --- CORE APP LOGIC ---
+let players = [], allSessions = [], allPayments = [];
+
+function checkPin() {
+  const pin = document.getElementById('pinInput').value;
+  if (pin === "4604") {
+    localStorage.setItem(PIN_KEY, pin);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    startListeners();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
 }
 
-// THE BRIDGE: Talk to Google Sheets from GitHub
-async function call(action, payload) {
-  const scriptUrl = 'https://script.google.com/macros/s/AKfycbxSk89VMMvmPVxNxscJ1j5D-X0kqdaJklCnkaJuyyzqNWm8bBLAVgvHvYX_PpRsh7hupA/exec'; 
-  
-  let query = `action=${action}`;
-  if (payload !== undefined) {
-    query += `&payload=${encodeURIComponent(JSON.stringify(payload))}`;
-  }
-  
-  const finalUrl = `${scriptUrl}?${query}`;
+function startListeners() {
+  // Real-time Players
+  db.collection("players").orderBy("name").onSnapshot(snap => {
+    players = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    renderPlayers();
+  });
 
-  try {
-    const response = await fetch(finalUrl);
-    if (!response.ok) throw new Error('Network error');
-    const data = await response.json();
-    if (data.error) throw data.error;
-    return data;
-  } catch (err) {
-    console.error("Connection failed:", err);
-    toast("Connection Error", false);
-    throw err;
+  // Real-time Sessions
+  db.collection("sessions").orderBy("created_at", "desc").onSnapshot(snap => {
+    allSessions = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    updateAllMath();
+  });
+
+  // Real-time Payments
+  db.collection("payments").orderBy("date", "desc").onSnapshot(snap => {
+    allPayments = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    updateAllMath();
+    renderPaymentLog();
+  });
+}
+
+function updateAllMath() {
+  const lifetime = {}, balance = {};
+  
+  allSessions.forEach(s => {
+    (s.players || []).forEach(p => {
+      lifetime[p.name] = (lifetime[p.name] || 0) + p.amount;
+      balance[p.name] = (balance[p.name] || 0) + p.amount;
+    });
+  });
+
+  allPayments.forEach(p => {
+    balance[p.from] = (balance[p.from] || 0) + p.amount;
+    balance[p.to] = (balance[p.to] || 0) - p.amount;
+  });
+
+  renderResults(lifetime, balance);
+}
+
+function computeSettlements(balMap) {
+  let bal = Object.keys(balMap).map(name => ({name, bal: Math.round(balMap[name]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
+  const txns = [];
+  while (bal.length > 1) {
+    bal.sort((a,b) => a.bal - b.bal);
+    let debtor = bal[0], creditor = bal[bal.length-1];
+    let amt = Math.round(Math.min(Math.abs(debtor.bal), creditor.bal)*100)/100;
+    if (amt > 0) {
+      txns.push({from: debtor.name, to: creditor.name, amount: amt});
+      debtor.bal += amt; creditor.bal -= amt;
+    }
+    bal = bal.filter(p => Math.abs(p.bal) > 0.01);
   }
+  return txns;
+}
+
+// --- DATABASE ACTIONS ---
+async function submitSession() {
+  const pData = [];
+  document.querySelectorAll('.amt').forEach(el => {
+    const val = parseFloat(el.value) || 0;
+    if(val !== 0) pData.push({ name: el.dataset.name, amount: val });
+  });
+  await db.collection("sessions").add({
+    name: document.getElementById('sessionNameInput').value || ("Session " + new Date().toLocaleDateString()),
+    players: pData,
+    created_at: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  toast("Session Saved", true);
+  document.getElementById('sessionNameInput').value = '';
+  show('results');
+}
+
+async function addPlayer() {
+  const name = document.getElementById('newPlayerName').value.trim();
+  if (!name) return;
+  await db.collection("players").add({ name });
+  document.getElementById('newPlayerName').value = '';
+  toast("Player Added", true);
+}
+
+async function confirmPayment(from, to, amt, i) {
+  await db.collection("payments").add({
+    from, to, amount: amt, date: new Date().toISOString().split('T')[0]
+  });
+  toast("Payment Logged", true);
+}
+
+// --- UI HELPERS ---
+function renderPlayers() {
+  const grid = document.getElementById('playersGrid'), list = document.getElementById('groupList');
+  grid.innerHTML = ''; list.innerHTML = '';
+  players.forEach(p => {
+    grid.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"></div>`;
+    list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
+  });
+}
+
+function updateBalance() {
+  let total = 0, count = 0;
+  document.querySelectorAll('.amt').forEach(el => { total += parseFloat(el.value) || 0; count++; });
+  const ok = Math.abs(total) < 0.01;
+  document.getElementById('balanceIndicator').textContent = ok ? `✓ Balanced (${count} players)` : `Unbalanced ($${total.toFixed(2)})`;
+  document.getElementById('calcBtn').disabled = !ok || count < 2;
+}
+
+function renderResults(lifetime, balance) {
+  // Standings
+  const sBody = document.getElementById('standingsTableBody');
+  sBody.innerHTML = Object.keys(lifetime).sort((a,b) => lifetime[b]-lifetime[a]).map(name => `<tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>`).join('');
+
+  // Settlements
+  const settlements = computeSettlements(balance);
+  document.getElementById('overallList').innerHTML = settlements.map((s, i) => `<div class="transfer-card"><span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span> <button class="pay-btn-sm" onclick="confirmPayment('${s.from}','${s.to}',${s.amount},${i})">PAY</button></div>`).join('') || "No debts!";
+
+  // History
+  document.getElementById('historyList').innerHTML = allSessions.map(s => `<div class="history-item"><strong>${s.name}</strong><br>${(s.players||[]).map(p => `<small style="margin-right:8px; color:${p.amount>=0?'var(--green)':'var(--red)'}">${p.name}: ${p.amount}</small>`).join('')}</div>`).join('');
 }
 
 function show(p) {
@@ -129,8 +235,6 @@ function show(p) {
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).style.display='block';
   document.getElementById('btn-'+p).classList.add('active');
-  if(p==='results') loadSessions();
-  if(p==='log') loadPaymentLog();
 }
 
 function showSub(s) {
@@ -140,116 +244,13 @@ function showSub(s) {
   document.getElementById('tabBtn-'+s).classList.add('active');
 }
 
-function togglePayForm(i) { document.getElementById(`pay-form-${i}`).classList.toggle('show'); }
+function toast(m, s) { const e = document.getElementById('toast'); e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); }
 
-async function loadPlayers() {
-  try {
-    players = await call('getPlayers');
-    const grid = document.getElementById('playersGrid'), gList = document.getElementById('groupList');
-    grid.innerHTML = ''; gList.innerHTML = '';
-    players.forEach(p => {
-      grid.innerHTML += `<div class="player-row" id="row-${p.id}"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"> <button onclick="removeRow('${p.id}')" style="background:none; border:none; color:#666; cursor:pointer;">✕</button></div>`;
-      gList.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
-    });
-  } catch(e) { }
+// Auto-login if PIN is saved
+if (localStorage.getItem(PIN_KEY) === "4604") {
+  document.getElementById('pinInput').value = "4604";
+  checkPin();
 }
-
-function removeRow(id) { document.getElementById('row-'+id).remove(); updateBalance(); }
-
-function updateBalance() {
-  let total = 0, count = 0;
-  document.querySelectorAll('.amt').forEach(el => { total += parseFloat(el.value) || 0; count++; });
-  const el = document.getElementById('balanceIndicator'), btn = document.getElementById('calcBtn');
-  const ok = Math.abs(total) < 0.01;
-  el.style.color = ok ? 'var(--green)' : 'var(--red)';
-  el.textContent = ok ? `✓ Balanced (${count} players)` : `Unbalanced: ${total > 0 ? 'Over' : 'Short'} by $${Math.abs(total).toFixed(2)}`;
-  btn.disabled = !ok || count < 2;
-}
-
-async function submitSession() {
-  const pData = [];
-  document.querySelectorAll('.amt').forEach(el => {
-    const val = parseFloat(el.value) || 0;
-    if(val !== 0) pData.push({ name: el.dataset.name, amount: val });
-  });
-  await call('addSession', { name: document.getElementById('sessionNameInput').value, players: pData });
-  toast('Saved!', true);
-  document.getElementById('sessionNameInput').value = '';
-  loadPlayers();
-  show('results');
-}
-
-async function loadSessions() {
-  const data = await call('getSessions');
-  sessions = data.sessions || [];
-  renderResults(data);
-}
-
-function renderResults(data) {
-  const tList = document.getElementById('thisList'), oList = document.getElementById('overallList'), hList = document.getElementById('historyList'), header = document.getElementById('latestHeader'), sTable = document.getElementById('standingsTableBody');
-  const today = new Date().toISOString().split('T')[0];
-  oList.innerHTML = ''; tList.innerHTML = ''; hList.innerHTML = ''; sTable.innerHTML = '';
-
-  (data.standings || []).forEach(p => {
-    const color = p.lifetime > 0 ? 'var(--green)' : (p.lifetime < 0 ? 'var(--red)' : '#888');
-    sTable.innerHTML += `<tr><td>${p.name}</td><td style="text-align:right; color:${color}">${p.lifetime > 0 ? '+' : ''}${p.lifetime.toFixed(2)}</td></tr>`;
-  });
-
-  (data.efficientSettlements || []).forEach((s, i) => {
-    oList.innerHTML += `
-      <div class="transfer-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-          <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
-        </div>
-        <div class="inline-pay" id="pay-form-${i}">
-          <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}">
-          <input type="date" id="pay-date-${i}" value="${today}">
-          <input type="text" id="pay-note-${i}" placeholder="Note..." style="grid-column: span 2">
-          <button class="pay-btn-full" onclick="processPayment('${s.from}', '${s.to}', ${i})">CONFIRM</button>
-        </div>
-      </div>`;
-  });
-
-  if(sessions.length > 0) {
-    const last = sessions[sessions.length-1];
-    header.innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${last.date}</small>`;
-    (last.players || []).forEach(p => { if(p.amount !== 0) tList.innerHTML += `<div style="font-size:0.85rem; padding:4px 0;">${p.name}: <span style="color:${p.amount > 0 ? 'var(--green)' : 'var(--red)'}">${p.amount > 0 ? '+' : ''}${p.amount}</span></div>`; });
-  }
-
-  [...sessions].reverse().forEach(s => {
-    const sc = (s.players || []).map(p => `<span style="font-size:0.7rem; color:${p.amount > 0 ? '#3de8a0' : '#ff5c6a'}; margin-right:8px;">${p.name}: ${p.amount > 0 ? '+' : ''}${p.amount}</span>`).join('');
-    hList.innerHTML += `<div class="history-item"><strong>${s.name}</strong><br>${sc}</div>`;
-  });
-}
-
-async function processPayment(from, to, i) {
-  const amt = parseFloat(document.getElementById(`pay-amt-${i}`).value);
-  const date = document.getElementById(`pay-date-${i}`).value;
-  const note = document.getElementById(`pay-note-${i}`).value;
-  await call('addPayment', { from, to, amount: amt, date, note });
-  toast('Paid!', true);
-  loadSessions();
-}
-
-async function loadPaymentLog() {
-  const log = await call('getPayments');
-  const list = document.getElementById('paymentLogList');
-  list.innerHTML = '';
-  log.forEach(p => {
-    list.innerHTML += `<div class="history-item"><div style="font-size:0.7rem; color:var(--muted);">${p.date}</div><span class="payer">${p.from_player}</span> → <span class="receiver">${p.to_player}</span>: <strong>$${p.amount}</strong><br><small>${p.note || ''}</small></div>`;
-  });
-}
-
-async function addPlayer() {
-  const name = document.getElementById('newPlayerName').value;
-  if(!name) return;
-  await call('addPlayer', { name });
-  document.getElementById('newPlayerName').value = '';
-  loadPlayers();
-}
-
-loadPlayers();
 </script>
 </body>
 </html>
