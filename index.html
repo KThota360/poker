@@ -76,8 +76,10 @@
     <button class="nav-tab" id="btn-players" onclick="show('players')">👥 Players</button>
   </div>
 
-  <div id="page-session" class="card">
-    <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:15px; box-sizing:border-box;">
+<div id="page-session" class="card">
+    <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:8px; box-sizing:border-box;">
+    <input type="text" id="sessionNoteInput" placeholder="Add a note (e.g. 1/2 NLH, special rules...)" style="width:100%; margin-bottom:15px; box-sizing:border-box; font-size: 0.8rem; opacity: 0.8;">
+    
     <div id="playersGrid">Loading...</div>
     <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
     <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled>Save Session</button>
@@ -184,14 +186,12 @@ function computeSettlements(balMap) {
 
 async function submitSession() {
     const pData = [];
+    const sessionNote = document.getElementById('sessionNoteInput').value.trim(); // Get note
+
     document.querySelectorAll('.amt').forEach(el => {
         const val = el.value;
-        // Check if the input isn't empty (allows 0 but skips blank fields)
         if(val !== "") {
-            pData.push({ 
-                name: el.dataset.name, 
-                amount: parseFloat(val) || 0 
-            });
+            pData.push({ name: el.dataset.name, amount: parseFloat(val) || 0 });
         }
     });
 
@@ -202,14 +202,16 @@ async function submitSession() {
 
     await db.collection("sessions").add({
         name: document.getElementById('sessionNameInput').value || ("Session " + new Date().toLocaleDateString()),
+        note: sessionNote, // Save the note to the database
         players: pData,
         created_at: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     toast("Session Saved", true);
-    document.getElementById('sessionNameInput').value = '';
     
-    // Clear inputs for next time
+    // Clear the inputs
+    document.getElementById('sessionNameInput').value = '';
+    document.getElementById('sessionNoteInput').value = ''; 
     document.querySelectorAll('.amt').forEach(el => el.value = '');
     
     show('results');
@@ -340,12 +342,22 @@ function renderResults(lifetime, balance) {
     `).join('');
   }
 
-  document.getElementById('historyList').innerHTML = allSessions.map(s => `
+document.getElementById('historyList').innerHTML = allSessions.map(s => `
     <div class="history-item">
-      <strong>${s.name}</strong><br>
-      ${(s.players || []).map(p => `<small style="margin-right:8px; color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">${p.name}: ${p.amount}</small>`).join('')}
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+            <strong>${s.name}</strong>
+        </div>
+        ${s.note ? `<div style="font-size:0.75rem; color:var(--accent); margin: 4px 0;">Note: ${s.note}</div>` : ''}
+        
+        <div style="margin-top:5px;">
+            ${(s.players || []).map(p => `
+                <small style="margin-right:8px; color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
+                    ${p.name}: ${p.amount >= 0 ? '+' : ''}${p.amount}
+                </small>
+            `).join('')}
+        </div>
     </div>
-  `).join('');
+`).join('');
 }
 
 function show(p) {
