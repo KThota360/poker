@@ -70,7 +70,9 @@
       <button class="nav-tab" id="tabBtn-this" onclick="showSub('this')" style="font-size:0.6rem">Latest</button>
       <button class="nav-tab" id="tabBtn-history" onclick="showSub('history')" style="font-size:0.6rem">History</button>
     </div>
-    <div id="sub-standings"><table class="standings-table"><thead><tr><th>Player</th><th style="text-align:right">Total</th></tr></thead><tbody id="standingsTableBody"></tbody></table></div>
+    <div id="sub-standings"><div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">
+    🏆 Lifetime Standings
+  </div><table class="standings-table"><thead><tr><th>Player</th><th style="text-align:right">Total</th></tr></thead><tbody id="standingsTableBody"></tbody></table></div>
     <div id="sub-overall" style="display:none;"><div id="overallList"></div></div>
     <div id="sub-this" style="display:none;"><div id="latestHeader" style="margin-bottom:10px;"></div><div id="thisList"></div></div>
     <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
@@ -90,14 +92,13 @@ const firebaseConfig = {
   projectId: "poker-settlement-12cb2",
   storageBucket: "poker-settlement-12cb2.firebasestorage.app",
   messagingSenderId: "305943610414",
-  appId: "1:305943610414:web:23e8d0823cf2b43938cbbf" 
+  appId: "1:305943610414:web:23e8d0823cf2b43938cbbf"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
 
-// --- CORE APP LOGIC ---
 let players = [], allSessions = [], allPayments = [];
 
 function checkPin() {
@@ -113,19 +114,16 @@ function checkPin() {
 }
 
 function startListeners() {
-  // Real-time Players
   db.collection("players").orderBy("name").onSnapshot(snap => {
     players = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
     renderPlayers();
   });
 
-  // Real-time Sessions
   db.collection("sessions").orderBy("created_at", "desc").onSnapshot(snap => {
     allSessions = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
     updateAllMath();
   });
 
-  // Real-time Payments
   db.collection("payments").orderBy("date", "desc").onSnapshot(snap => {
     allPayments = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
     updateAllMath();
@@ -135,19 +133,16 @@ function startListeners() {
 
 function updateAllMath() {
   const lifetime = {}, balance = {};
-  
   allSessions.forEach(s => {
     (s.players || []).forEach(p => {
       lifetime[p.name] = (lifetime[p.name] || 0) + p.amount;
       balance[p.name] = (balance[p.name] || 0) + p.amount;
     });
   });
-
   allPayments.forEach(p => {
     balance[p.from] = (balance[p.from] || 0) + p.amount;
     balance[p.to] = (balance[p.to] || 0) - p.amount;
   });
-
   renderResults(lifetime, balance);
 }
 
@@ -167,7 +162,6 @@ function computeSettlements(balMap) {
   return txns;
 }
 
-// --- DATABASE ACTIONS ---
 async function submitSession() {
   const pData = [];
   document.querySelectorAll('.amt').forEach(el => {
@@ -192,65 +186,85 @@ async function addPlayer() {
   toast("Player Added", true);
 }
 
-// --- UPDATED DATABASE ACTIONS ---
-
 async function confirmPayment(from, to, i) {
-  // Grab values from the specific inline form
   const amt = parseFloat(document.getElementById(`pay-amt-${i}`).value);
   const date = document.getElementById(`pay-date-${i}`).value;
   const note = document.getElementById(`pay-note-${i}`).value;
-
   if (isNaN(amt) || amt <= 0) {
     toast("Enter a valid amount", false);
     return;
   }
-
   await db.collection("payments").add({
-    from, 
-    to, 
-    amount: amt, 
-    date: date || new Date().toISOString().split('T')[0],
-    note: note || ''
+    from, to, amount: amt, date: date || new Date().toISOString().split('T')[0], note: note || ''
   });
-  
   toast("Payment Logged!", true);
 }
 
-// --- UPDATED UI HELPERS ---
-
 function togglePayForm(i) {
   const form = document.getElementById(`pay-form-${i}`);
-  form.classList.toggle('show');
+  if (form) form.classList.toggle('show');
+}
+
+function renderPaymentLog() {
+  const list = document.getElementById('paymentLogList');
+  if (!list) return;
+  list.innerHTML = allPayments.map(p => `
+    <div class="history-item">
+      <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
+      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: 
+      <strong>$${Number(p.amount).toFixed(2)}</strong><br>
+      <small>${p.note || ''}</small>
+    </div>
+  `).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
+}
+
+function renderPlayers() {
+  const grid = document.getElementById('playersGrid'), list = document.getElementById('groupList');
+  grid.innerHTML = ''; list.innerHTML = '';
+  players.forEach(p => {
+    grid.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span><input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()"></div>`;
+    list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
+  });
+}
+
+function updateBalance() {
+  let total = 0, count = 0;
+  document.querySelectorAll('.amt').forEach(el => { total += parseFloat(el.value) || 0; count++; });
+  const ok = Math.abs(total) < 0.01;
+  document.getElementById('balanceIndicator').textContent = ok ? `✓ Balanced (${count} players)` : `Unbalanced ($${total.toFixed(2)})`;
+  document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
 
 function renderResults(lifetime, balance) {
-  // 1. Standings
   const sBody = document.getElementById('standingsTableBody');
-  sBody.innerHTML = Object.keys(lifetime).sort((a,b) => lifetime[b]-lifetime[a]).map(name => `
-    <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
-  `).join('');
+  if (sBody) {
+    sBody.innerHTML = Object.keys(lifetime).sort((a,b) => lifetime[b]-lifetime[a]).map(name => `
+      <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
+    `).join('');
+  }
 
-  // 2. Settlements (with Partial Payment Form)
   const settlements = computeSettlements(balance);
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
-    <div class="transfer-card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-        <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
+  const overallList = document.getElementById('overallList');
+  if (overallList) {
+    overallList.innerHTML = settlements.map((s, i) => `
+      <div class="transfer-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
+          <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
+        </div>
+        <div class="inline-pay" id="pay-form-${i}">
+          <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
+          <input type="date" id="pay-date-${i}" value="${today}">
+          <input type="text" id="pay-note-${i}" placeholder="Notes..." style="grid-column: span 2">
+          <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM</button>
+        </div>
       </div>
-      <div class="inline-pay" id="pay-form-${i}">
-        <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
-        <input type="date" id="pay-date-${i}" value="${today}">
-        <input type="text" id="pay-note-${i}" placeholder="Notes (Venmo, Cash, etc.)" style="grid-column: span 2">
-        <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM PAYMENT</button>
-      </div>
-    </div>
-  `).join('') || "No debts!";
+    `).join('') || "No debts!";
+  }
 
-  // 3. Latest Session Fix
   if (allSessions.length > 0) {
-    const last = allSessions[0]; // most recent due to orderBy desc
+    const last = allSessions[0];
     const dateLabel = last.created_at ? last.created_at.toDate().toLocaleDateString() : 'Just now';
     document.getElementById('latestHeader').innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${dateLabel}</small>`;
     document.getElementById('thisList').innerHTML = (last.players || []).map(p => `
@@ -260,7 +274,6 @@ function renderResults(lifetime, balance) {
     `).join('');
   }
 
-  // 4. History
   document.getElementById('historyList').innerHTML = allSessions.map(s => `
     <div class="history-item">
       <strong>${s.name}</strong><br>
@@ -268,6 +281,7 @@ function renderResults(lifetime, balance) {
     </div>
   `).join('');
 }
+
 function show(p) {
   document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display='none');
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -284,7 +298,6 @@ function showSub(s) {
 
 function toast(m, s) { const e = document.getElementById('toast'); e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); }
 
-// Auto-login if PIN is saved
 if (localStorage.getItem(PIN_KEY) === "4604") {
   document.getElementById('pinInput').value = "4604";
   checkPin();
