@@ -297,6 +297,36 @@ function renderResults(lifetime, balance) {
         </div>
       `).join('') || "No debts!";
     }
+
+  // --- Latest Session Display ---
+  if (allSessions.length > 0) {
+    const last = allSessions[0];
+    
+    // Safety check for Firestore timestamp
+    let dateLabel = 'Just now';
+    if (last.created_at && typeof last.created_at.toDate === 'function') {
+        dateLabel = last.created_at.toDate().toLocaleDateString();
+    } else if (last.updated_at && typeof last.updated_at.toDate === 'function') {
+        dateLabel = last.updated_at.toDate().toLocaleDateString();
+    }
+
+    const latestHeader = document.getElementById('latestHeader');
+    if (latestHeader) {
+        latestHeader.innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${dateLabel}</small>`;
+    }
+
+    const thisList = document.getElementById('thisList');
+    if (thisList) {
+        thisList.innerHTML = (last.players || []).map(p => `
+          <div style="font-size:0.85rem; padding:4px 0;">
+            ${p.name}: <span style="color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
+                ${p.amount >= 0 ? '+' : ''}${Number(p.amount).toFixed(2)}
+            </span>
+          </div>
+        `).join('');
+    }
+  }
+  
     document.getElementById('historyList').innerHTML = allSessions.map(s => `
         <div class="history-item">
             <div style="display:flex; justify-content:space-between; align-items:start;">
