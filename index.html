@@ -429,7 +429,7 @@ if (localStorage.getItem(PIN_KEY) === "4604") {
 let targetEditSessionId = null; // Temporary storage
 
 function secureEditPrompt(sessionId) {
-    targetEditSessionId = sessionId;
+    targetEditSessionId = sessionId; // Store the ID before opening modal
     document.getElementById('editPinModal').style.display = 'block';
     document.getElementById('modalOverlay').style.display = 'block';
     document.getElementById('securePinInput').focus();
@@ -448,11 +448,12 @@ async function verifySecurePin() {
 
     try {
         const doc = await db.collection("settings").doc("app_config").get();
-        const securePin = doc.data().pin;
+        const securePin = doc.data().pin; // This is "1903" in your Firebase
 
         if (userPin === securePin) {
             closeEditModal();
-            loadSessionForEditing(targetEditSessionId);
+            // Now we pass the saved ID to the loading function
+            loadSessionForEditing(targetEditSessionId); 
         } else {
             toast("Incorrect Admin PIN", false);
             document.getElementById('securePinInput').value = '';
@@ -461,6 +462,7 @@ async function verifySecurePin() {
         toast("Connection Error", false);
     }
 }
+  
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
