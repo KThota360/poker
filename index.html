@@ -74,7 +74,7 @@
       <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
     </div>  
     
-    <div id="editControls" style="display:none; margin-top:10px; display: flex; gap: 10px;">
+    <div id="editControls" style="display:none; margin-top:10px; gap: 10px;">
       <button onclick="deleteSession()" style="flex:1; background:var(--red) !important; color:white; border:none; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
       <button onclick="cancelEditing()" style="flex:1; background:transparent !important; color:var(--text); border:1px solid #444; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit</button>
     </div>
@@ -265,21 +265,18 @@ function loadSessionForEditing(sessionId) {
     show('session'); 
     editingSessionId = sessionId;
     
-    // Fill Text Inputs
     document.getElementById('sessionNameInput').value = session.name || '';
     document.getElementById('sessionNoteInput').value = session.note || '';
     
-    // Fill Player Amounts
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
     document.querySelectorAll('.amt').forEach(input => {
         const pData = session.players.find(p => p.name === input.dataset.name);
         input.value = pData ? pData.amount : ""; 
     });
 
-    // Toggle UI Elements
     document.getElementById('calcBtn').textContent = "Update Session";
     document.getElementById('editingHeader').style.display = 'block';
-    document.getElementById('editControls').style.display = 'flex';
+    document.getElementById('editControls').style.display = 'flex'; // Shows buttons
     
     updateBalance();
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -450,15 +447,17 @@ async function deletePaymentEdit() {
 function cancelPaymentEdit() { editingPaymentId = null; document.getElementById('editPaymentForm').style.display = 'none'; }
 
 function renderPaymentLog() {
-  document.getElementById('paymentLogList').innerHTML = allPayments.map(p => `
+  const list = document.getElementById('paymentLogList');
+  if (!list) return;
+  list.innerHTML = allPayments.map(p => `
     <div class="history-item">
       <div style="display:flex; justify-content:space-between; align-items:start;">
         <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
         <button class="pay-btn-sm" onclick="securePaymentEditPrompt('${p.id}')">EDIT</button>
       </div>
-      <span class="payer">${p.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${Number(p.amount).toFixed(2)}</strong><br>
+      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: <strong>$${Number(p.amount).toFixed(2)}</strong><br>
       <small>${p.note || ''}</small>
-    </div>`).join('') || '<p style="text-align:center; color:var(--muted);">No payments.</p>';
+    </div>`).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
 }
 
 // --- UTILS ---
@@ -467,6 +466,7 @@ function show(p) {
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).style.display='block';
   document.getElementById('btn-'+p).classList.add('active');
+  // If moving to session tab via nav button, and NOT editing, clean the UI
   if(p === 'session' && !editingSessionId) resetSessionUI();
 }
 
