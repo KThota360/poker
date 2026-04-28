@@ -93,21 +93,22 @@
     <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
   </div>
 
-<div id="page-log" class="card" style="display:none;">
-  <div id="editPaymentForm" style="display:none; background:var(--surface2); padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--accent);">
-    <h4 style="margin-top:0; color:var(--accent); font-size:0.8rem; text-transform:uppercase;">Edit Payment</h4>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-      <div style="grid-column: span 2; font-size:0.8rem; color:var(--muted);" id="editPayDesc"></div>
-      <input type="number" id="editPayAmt" step="0.01" style="width:100%; box-sizing:border-box;">
-      <input type="date" id="editPayDate" style="width:100%; box-sizing:border-box;">
-      <input type="text" id="editPayNote" placeholder="Note..." style="grid-column: span 2; width:100%; box-sizing:border-box;">
-      <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px;">Update</button>
-      <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; background:transparent !important; border:1px solid #444;">Cancel</button>
+  <div id="page-log" class="card" style="display:none;">
+    <div id="editPaymentForm" style="display:none; background:var(--surface2); padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--accent);">
+      <h4 style="margin-top:0; color:var(--accent); font-size:0.8rem; text-transform:uppercase;">Edit Payment</h4>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div style="grid-column: span 2; font-size:0.8rem; color:var(--muted);" id="editPayDesc"></div>
+        <input type="number" id="editPayAmt" step="0.01" style="width:100%; box-sizing:border-box;">
+        <input type="date" id="editPayDate" style="width:100%; box-sizing:border-box;">
+        <input type="text" id="editPayNote" placeholder="Note..." style="grid-column: span 2; width:100%; box-sizing:border-box;">
+        <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px;">Update</button>
+        <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; background:transparent !important; border:1px solid #444;">Cancel</button>
+      </div>
     </div>
+    
+    <div id="paymentLogList"></div>
   </div>
-  
-  <div id="paymentLogList"></div>
-</div>
+
   <div id="page-players" class="card" style="display:none;">
     <div id="groupList"></div>
     <input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;">
@@ -143,10 +144,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
   
-let editingSessionId = null;    
+// --- GLOBAL VARIABLES ---
+let editingSessionId = null;      
+let targetEditSessionId = null;   // Used as bridge for both Session AND Payment IDs
 let editingPaymentId = null;
-let currentEditType = 'session'; // Default to session
-let targetEditSessionId = null;   
+let currentEditType = 'session';  // Crucial: Tracks if we are editing a 'session' or 'payment'
 let players = [], allSessions = [], allPayments = [];
 
 // --- APP ACCESS PIN (Hardcoded 4604) ---
@@ -195,6 +197,7 @@ function updateAllMath() {
   renderResults(lifetime, balance);
 }
 
+// --- SESSION LOGIC ---
 function resetSessionUI() {
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
     document.querySelectorAll('.amt').forEach(input => input.value = '');
@@ -247,6 +250,7 @@ function cancelEditing() {
     toast("Edit Cancelled", false);
 }
 
+// --- PLAYER LOGIC ---
 function renderPlayers() {
     const grid = document.getElementById('playersGrid'),
           list = document.getElementById('groupList');
@@ -288,6 +292,7 @@ function updateBalance() {
     document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
 
+// --- RESULTS UI ---
 function renderResults(lifetime, balance) {
     const sBody = document.getElementById('standingsTableBody');
     if (sBody) {
@@ -295,6 +300,7 @@ function renderResults(lifetime, balance) {
         <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
       `).join('');
     }
+    
     const settlements = computeSettlements(balance);
     const overallList = document.getElementById('overallList');
     if (overallList) {
@@ -313,36 +319,24 @@ function renderResults(lifetime, balance) {
         </div>
       `).join('') || "No debts!";
     }
-
-  // --- Latest Session Display ---
-  if (allSessions.length > 0) {
-    const last = allSessions[0];
     
-    // Safety check for Firestore timestamp
-    let dateLabel = 'Just now';
-    if (last.created_at && typeof last.created_at.toDate === 'function') {
-        dateLabel = last.created_at.toDate().toLocaleDateString();
-    } else if (last.updated_at && typeof last.updated_at.toDate === 'function') {
-        dateLabel = last.updated_at.toDate().toLocaleDateString();
-    }
+    if (allSessions.length > 0) {
+        const last = allSessions[0];
+        let dateLabel = 'Just now';
+        if (last.created_at && typeof last.created_at.toDate === 'function') {
+            dateLabel = last.created_at.toDate().toLocaleDateString();
+        } else if (last.updated_at && typeof last.updated_at.toDate === 'function') {
+            dateLabel = last.updated_at.toDate().toLocaleDateString();
+        }
 
-    const latestHeader = document.getElementById('latestHeader');
-    if (latestHeader) {
-        latestHeader.innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${dateLabel}</small>`;
-    }
-
-    const thisList = document.getElementById('thisList');
-    if (thisList) {
-        thisList.innerHTML = (last.players || []).map(p => `
+        document.getElementById('latestHeader').innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${dateLabel}</small>`;
+        document.getElementById('thisList').innerHTML = (last.players || []).map(p => `
           <div style="font-size:0.85rem; padding:4px 0;">
-            ${p.name}: <span style="color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
-                ${p.amount >= 0 ? '+' : ''}${Number(p.amount).toFixed(2)}
-            </span>
+            ${p.name}: <span style="color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">${p.amount >= 0 ? '+' : ''}${Number(p.amount).toFixed(2)}</span>
           </div>
         `).join('');
     }
-  }
-  
+
     document.getElementById('historyList').innerHTML = allSessions.map(s => `
         <div class="history-item">
             <div style="display:flex; justify-content:space-between; align-items:start;">
@@ -361,9 +355,23 @@ function renderResults(lifetime, balance) {
     `).join('');
 }
 
-// --- SECURE ADMIN EDITING LOGIC (Firebase PIN Check) ---
+// --- SECURE ADMIN EDITING LOGIC ---
+
+// 1. Prompt for Session Edit
 function secureEditPrompt(sessionId) {
     targetEditSessionId = sessionId;
+    currentEditType = 'session'; // Ensure app knows we are editing a session
+    document.getElementById('editPinModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    const pinInput = document.getElementById('securePinInput');
+    pinInput.value = '';
+    pinInput.focus();
+}
+
+// 2. Prompt for Payment Edit
+function securePaymentEditPrompt(paymentId) {
+    targetEditSessionId = paymentId;
+    currentEditType = 'payment'; // Ensure app knows we are editing a payment
     document.getElementById('editPinModal').style.display = 'block';
     document.getElementById('modalOverlay').style.display = 'block';
     const pinInput = document.getElementById('securePinInput');
@@ -377,6 +385,7 @@ function closeEditModal() {
     document.getElementById('securePinInput').value = '';
 }
 
+// 3. Verify PIN and Route Correctly
 async function verifySecurePin() {
     const pinInput = document.getElementById('securePinInput');
     const userPin = pinInput.value;
@@ -388,7 +397,13 @@ async function verifySecurePin() {
 
         if (userPin === securePin) {
             closeEditModal(); 
-            loadSessionForEditing(targetEditSessionId); 
+            
+            // ROUTING LOGIC: Check which type of edit was requested
+            if (currentEditType === 'payment') {
+                loadPaymentForEditing(targetEditSessionId);
+            } else {
+                loadSessionForEditing(targetEditSessionId);
+            }
         } else {
             pinInput.type = "text"; 
             pinInput.value = "WRONG PIN";
@@ -405,6 +420,7 @@ async function verifySecurePin() {
     }
 }
 
+// 4a. Load Session Data into Session Tab
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
@@ -423,92 +439,24 @@ function loadSessionForEditing(sessionId) {
     toast("Editing Mode Active", true);
 }
 
-// Helpers
-function show(p) {
-  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display='none');
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('page-'+p).style.display='block';
-  document.getElementById('btn-'+p).classList.add('active');
-}
-function showSub(s) {
-  document.querySelectorAll('[id^="sub-"]').forEach(el => el.style.display='none');
-  document.querySelectorAll('[id^="tabBtn-"]').forEach(el => el.classList.remove('active'));
-  document.getElementById('sub-'+s).style.display='block';
-  document.getElementById('tabBtn-'+s).classList.add('active');
-}
-function toast(m, s) { 
-  const e = document.getElementById('toast'); 
-  e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; 
-  e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); 
-}
-function togglePayForm(i) { const f = document.getElementById(`pay-form-${i}`); if(f) f.classList.toggle('show'); }
-function computeSettlements(balMap) {
-  let bal = Object.keys(balMap).map(n => ({name:n, bal: Math.round(balMap[n]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
-  const txns = [];
-  while (bal.length > 1) {
-    bal.sort((a,b) => a.bal - b.bal);
-    let d = bal[0], c = bal[bal.length-1];
-    let a = Math.round(Math.min(Math.abs(d.bal), c.bal)*100)/100;
-    if (a > 0) { txns.push({from: d.name, to: c.name, amount: a}); d.bal += a; c.bal -= a; }
-    bal = bal.filter(p => Math.abs(p.bal) > 0.01);
-  }
-  return txns;
-}
-async function addPlayer() {
-  const n = document.getElementById('newPlayerName').value.trim();
-  if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; }
-}
-async function confirmPayment(f, t, i) {
-  const a = parseFloat(document.getElementById(`pay-amt-${i}`).value);
-  const d = document.getElementById(`pay-date-${i}`).value;
-  const n = document.getElementById(`pay-note-${i}`).value;
-  if (!isNaN(a) && a > 0) {
-    await db.collection("payments").add({from:f, to:t, amount:a, date:d || new Date().toISOString().split('T')[0], note:n || ''});
-    toast("Payment Logged!", true);
-  }
-}
-function renderPaymentLog() {
-  const list = document.getElementById('paymentLogList');
-  if (!list) return;
-  list.innerHTML = allPayments.map(p => `
-    <div class="history-item" id="pay-item-${p.id}">
-      <div style="display:flex; justify-content:space-between; align-items:start;">
-        <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
-        <button class="pay-btn-sm" onclick="securePaymentEditPrompt('${p.id}')">EDIT</button>
-      </div>
-      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: 
-      <strong>$${Number(p.amount).toFixed(2)}</strong><br>
-      <small>${p.note || ''}</small>
-    </div>
-  `).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
-}
-
-function securePaymentEditPrompt(paymentId) {
-    targetEditSessionId = paymentId;
-    currentEditType = 'payment'; // Tell the PIN verifier we are editing a payment
-    document.getElementById('editPinModal').style.display = 'block';
-    document.getElementById('modalOverlay').style.display = 'block';
-    document.getElementById('securePinInput').focus();
-}
-
+// 4b. Load Payment Data into Payment Tab
 function loadPaymentForEditing(paymentId) {
     const pay = allPayments.find(p => p.id === paymentId);
     if (!pay) return;
 
     editingPaymentId = paymentId;
-    show('log'); // Switch to Payments tab
+    show('log'); 
     
-    // Fill the Edit Form
     document.getElementById('editPaymentForm').style.display = 'block';
     document.getElementById('editPayDesc').innerText = `${pay.from} → ${pay.to}`;
     document.getElementById('editPayAmt').value = pay.amount;
     document.getElementById('editPayDate').value = pay.date || new Date().toISOString().split('T')[0];
     document.getElementById('editPayNote').value = pay.note || '';
     
-    // Scroll to top to see the form
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
+// --- PAYMENT SAVE/CANCEL LOGIC ---
 async function savePaymentEdit() {
     if (!editingPaymentId) return;
     
@@ -535,6 +483,73 @@ async function savePaymentEdit() {
 function cancelPaymentEdit() {
     editingPaymentId = null;
     document.getElementById('editPaymentForm').style.display = 'none';
+}
+
+function renderPaymentLog() {
+  const list = document.getElementById('paymentLogList');
+  if (!list) return;
+  list.innerHTML = allPayments.map(p => `
+    <div class="history-item">
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
+        <button class="pay-btn-sm" onclick="securePaymentEditPrompt('${p.id}')">EDIT</button>
+      </div>
+      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: 
+      <strong>$${Number(p.amount).toFixed(2)}</strong><br>
+      <small>${p.note || ''}</small>
+    </div>
+  `).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
+}
+
+// --- HELPERS ---
+function show(p) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display='none');
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-'+p).style.display='block';
+  document.getElementById('btn-'+p).classList.add('active');
+}
+
+function showSub(s) {
+  document.querySelectorAll('[id^="sub-"]').forEach(el => el.style.display='none');
+  document.querySelectorAll('[id^="tabBtn-"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('sub-'+s).style.display='block';
+  document.getElementById('tabBtn-'+s).classList.add('active');
+}
+
+function toast(m, s) { 
+  const e = document.getElementById('toast'); 
+  e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; 
+  e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); 
+}
+
+function togglePayForm(i) { const f = document.getElementById(`pay-form-${i}`); if(f) f.classList.toggle('show'); }
+
+function computeSettlements(balMap) {
+  let bal = Object.keys(balMap).map(n => ({name:n, bal: Math.round(balMap[n]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
+  const txns = [];
+  while (bal.length > 1) {
+    bal.sort((a,b) => a.bal - b.bal);
+    let d = bal[0], c = bal[bal.length-1];
+    let a = Math.round(Math.min(Math.abs(d.bal), c.bal)*100)/100;
+    if (a > 0) { txns.push({from: d.name, to: c.name, amount: a}); d.bal += a; c.bal -= a; }
+    bal = bal.filter(p => Math.abs(p.bal) > 0.01);
+  }
+  return txns;
+}
+
+async function addPlayer() {
+  const n = document.getElementById('newPlayerName').value.trim();
+  if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; }
+}
+
+async function confirmPayment(f, t, i) {
+  const a = parseFloat(document.getElementById(`pay-amt-${i}`).value);
+  const d = document.getElementById(`pay-date-${i}`).value;
+  const n = document.getElementById(`pay-note-${i}`).value;
+  if (!isNaN(a) && a > 0) {
+    await db.collection("payments").add({from:f, to:t, amount:a, date:d || new Date().toISOString().split('T')[0], note:n || ''});
+    toast("Payment Logged!", true);
+  }
 }
 
 // Auto-login check
