@@ -33,26 +33,10 @@
   .standings-table { width:100%; color:white; border-collapse: collapse; font-family:'JetBrains Mono'; font-size:0.85rem; margin-bottom: 20px; }
   .standings-table th { border-bottom:1px solid #333; color:var(--accent); text-align:left; padding:8px; }
   .standings-table td { padding:8px; border-bottom:1px solid #222; }
-  .remove-x {
-    cursor: pointer;
-    color: #888;
-    font-weight: bold;
-    font-size: 1.2rem;
-    padding-left: 10px;
-    transition: color 0.2s;
-}
-
-.remove-x:hover {
-    color: var(--red); /* Turns red when you hover over it */
-}
-  .unbalanced-text {
-    color: var(--red);
-    font-weight: 800;
-}
-.balanced-text {
-    color: var(--green);
-    font-weight: 800;
-}
+  .remove-x { cursor: pointer; color: #888; font-weight: bold; font-size: 1.2rem; padding-left: 10px; transition: color 0.2s; }
+  .remove-x:hover { color: var(--red); }
+  .unbalanced-text { color: var(--red); font-weight: 800; }
+  .balanced-text { color: var(--green); font-weight: 800; }
 </style>
 </head>
 <body>
@@ -76,12 +60,13 @@
     <button class="nav-tab" id="btn-players" onclick="show('players')">👥 Players</button>
   </div>
 
-<div id="page-session" class="card">
+  <div id="page-session" class="card">
     <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:8px; box-sizing:border-box;">
     <input type="text" id="sessionNoteInput" placeholder="Add a note ($$ Tables taken,Banker...)" style="width:100%; margin-bottom:15px; box-sizing:border-box; font-size: 0.8rem; opacity: 0.8;">
     
     <div id="playersGrid">Loading...</div>
     <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
+    
     <div style="display: flex; gap: 10px;">
       <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled style="flex: 2;">Save Session</button>
       <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
@@ -96,17 +81,26 @@
       <button class="nav-tab" id="tabBtn-this" onclick="showSub('this')" style="font-size:0.6rem">Latest</button>
       <button class="nav-tab" id="tabBtn-history" onclick="showSub('history')" style="font-size:0.6rem">History</button>
     </div>
-    <div id="sub-standings"><div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">
-    🏆 Lifetime Standings
-  </div><table class="standings-table"><thead><tr><th>Player</th><th style="text-align:right">Total</th></tr></thead><tbody id="standingsTableBody"></tbody></table></div>
+    <div id="sub-standings">
+      <div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">🏆 Lifetime Standings</div>
+      <table class="standings-table">
+        <thead><tr><th>Player</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody id="standingsTableBody"></tbody>
+      </table>
+    </div>
     <div id="sub-overall" style="display:none;"><div id="overallList"></div></div>
     <div id="sub-this" style="display:none;"><div id="latestHeader" style="margin-bottom:10px;"></div><div id="thisList"></div></div>
     <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
   </div>
 
   <div id="page-log" class="card" style="display:none;"><div id="paymentLogList"></div></div>
-  <div id="page-players" class="card" style="display:none;"><div id="groupList"></div><input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;"><button class="calc-btn" onclick="addPlayer()">Add Player</button></div>
-<div id="editPinModal" class="card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1001; width:300px; text-align:center; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+  <div id="page-players" class="card" style="display:none;">
+    <div id="groupList"></div>
+    <input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;">
+    <button class="calc-btn" onclick="addPlayer()">Add Player</button>
+  </div>
+
+  <div id="editPinModal" class="card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1001; width:300px; text-align:center; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
     <h3 style="color:var(--accent); margin-top:0;">Admin Access</h3>
     <p style="font-size:0.8rem; color:var(--muted)">Enter Secure PIN to edit</p>
     <input type="password" id="securePinInput" placeholder="••••" style="text-align:center; font-size:1.5rem; letter-spacing:8px; width:100%; margin-bottom:15px; box-sizing:border-box;">
@@ -114,8 +108,8 @@
         <button class="calc-btn" onclick="verifySecurePin()" style="margin-top:0; flex:2;">Verify</button>
         <button class="calc-btn" onclick="closeEditModal()" style="margin-top:0; flex:1; background:var(--surface2) !important; border:1px solid #444;">✕</button>
     </div>
-</div>
-<div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;" onclick="closeEditModal()"></div>
+  </div>
+  <div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;" onclick="closeEditModal()"></div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -135,10 +129,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
   
-let editingSessionId = null;      // Tracks the session currently being edited
-let targetEditSessionId = null;   // Temporarily holds the ID while the PIN modal is open
+let editingSessionId = null;      
+let targetEditSessionId = null;   
 let players = [], allSessions = [], allPayments = [];
 
+// --- APP ACCESS PIN (Hardcoded 4604) ---
 function checkPin() {
   const pin = document.getElementById('pinInput').value;
   if (pin === "4604") {
@@ -185,40 +180,11 @@ function updateAllMath() {
 }
 
 function resetSessionUI() {
-    // 1. Show all hidden rows
-    document.querySelectorAll('.player-row').forEach(row => {
-        row.style.display = 'flex';
-    });
-    
-    // 2. Clear all amount inputs
-    document.querySelectorAll('.amt').forEach(input => {
-        input.value = '';
-    });
-    
-    // 3. Clear session name and notes
+    document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
+    document.querySelectorAll('.amt').forEach(input => input.value = '');
     document.getElementById('sessionNameInput').value = '';
     document.getElementById('sessionNoteInput').value = '';
-
-    // 4. Refresh the balance math
     updateBalance();
-    
-    toast("Session Reset", true);
-}
-  
-function computeSettlements(balMap) {
-  let bal = Object.keys(balMap).map(name => ({name, bal: Math.round(balMap[name]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
-  const txns = [];
-  while (bal.length > 1) {
-    bal.sort((a,b) => a.bal - b.bal);
-    let debtor = bal[0], creditor = bal[bal.length-1];
-    let amt = Math.round(Math.min(Math.abs(debtor.bal), creditor.bal)*100)/100;
-    if (amt > 0) {
-      txns.push({from: debtor.name, to: creditor.name, amount: amt});
-      debtor.bal += amt; creditor.bal -= amt;
-    }
-    bal = bal.filter(p => Math.abs(p.bal) > 0.01);
-  }
-  return txns;
 }
 
 async function submitSession() {
@@ -242,13 +208,12 @@ async function submitSession() {
     };
 
     if (editingSessionId) {
-        // Update existing document in Firebase
         await db.collection("sessions").doc(editingSessionId).update(sessionData);
         editingSessionId = null;
         document.getElementById('calcBtn').textContent = "Save Session";
+        document.getElementById('cancelEditBtn').style.display = 'none';
         toast("Session Updated!", true);
     } else {
-        // Create new document
         sessionData.created_at = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection("sessions").add(sessionData);
         toast("Session Saved!", true);
@@ -257,60 +222,19 @@ async function submitSession() {
     resetSessionUI();
     show('results');
 }
-  
-async function addPlayer() {
-  const name = document.getElementById('newPlayerName').value.trim();
-  if (!name) return;
-  await db.collection("players").add({ name });
-  document.getElementById('newPlayerName').value = '';
-  toast("Player Added", true);
-}
-
-async function confirmPayment(from, to, i) {
-  const amt = parseFloat(document.getElementById(`pay-amt-${i}`).value);
-  const date = document.getElementById(`pay-date-${i}`).value;
-  const note = document.getElementById(`pay-note-${i}`).value;
-  if (isNaN(amt) || amt <= 0) {
-    toast("Enter a valid amount", false);
-    return;
-  }
-  await db.collection("payments").add({
-    from, to, amount: amt, date: date || new Date().toISOString().split('T')[0], note: note || ''
-  });
-  toast("Payment Logged!", true);
-}
 
 function cancelEditing() {
-    editingSessionId = null; // Clear the reference to the old session
-    document.getElementById('calcBtn').textContent = "Save Session"; // Revert button text
-    document.getElementById('cancelEditBtn').style.display = 'none'; // Hide this cancel button
-    resetSessionUI(); // Clear the inputs and show all players
+    editingSessionId = null;
+    document.getElementById('calcBtn').textContent = "Save Session";
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    resetSessionUI();
     toast("Edit Cancelled", false);
-}
-  
-function togglePayForm(i) {
-  const form = document.getElementById(`pay-form-${i}`);
-  if (form) form.classList.toggle('show');
-}
-
-function renderPaymentLog() {
-  const list = document.getElementById('paymentLogList');
-  if (!list) return;
-  list.innerHTML = allPayments.map(p => `
-    <div class="history-item">
-      <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
-      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: 
-      <strong>$${Number(p.amount).toFixed(2)}</strong><br>
-      <small>${p.note || ''}</small>
-    </div>
-  `).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
 }
 
 function renderPlayers() {
     const grid = document.getElementById('playersGrid'),
           list = document.getElementById('groupList');
-    grid.innerHTML = '';
-    list.innerHTML = '';
+    grid.innerHTML = ''; list.innerHTML = '';
     players.forEach(p => {
         grid.innerHTML += `
             <div class="player-row" id="row-${p.name}">
@@ -321,15 +245,14 @@ function renderPlayers() {
         list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
     });
 }
-  
+
 function removePlayerFromSession(name) {
     const row = document.getElementById(`row-${name}`);
-    const input = row.querySelector('.amt');
-    input.value = ""; // Clear input so it's ignored by updateBalance
-    row.style.display = 'none'; // Hide the row
-    updateBalance(); // Recalculate the total
+    row.querySelector('.amt').value = "";
+    row.style.display = 'none';
+    updateBalance();
 }
-  
+
 function updateBalance() {
     let total = 0, count = 0;
     document.querySelectorAll('.amt').forEach(el => {
@@ -338,188 +261,176 @@ function updateBalance() {
             count++;
         }
     });
-
     const indicator = document.getElementById('balanceIndicator');
     const ok = Math.abs(total) < 0.01;
-    
     if (ok) {
         indicator.innerHTML = `<span class="balanced-text">✓ Balanced (${count} players)</span>`;
     } else {
-        // Show + or - explicitly
         const diffLabel = total > 0 ? `+${total.toFixed(2)}` : total.toFixed(2);
         indicator.innerHTML = `<span class="unbalanced-text">⚠ Unbalanced (${diffLabel})</span>`;
     }
-
     document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
+
 function renderResults(lifetime, balance) {
-  const sBody = document.getElementById('standingsTableBody');
-  if (sBody) {
-    sBody.innerHTML = Object.keys(lifetime).sort((a,b) => lifetime[b]-lifetime[a]).map(name => `
-      <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
+    const sBody = document.getElementById('standingsTableBody');
+    if (sBody) {
+      sBody.innerHTML = Object.keys(lifetime).sort((a,b) => lifetime[b]-lifetime[a]).map(name => `
+        <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
+      `).join('');
+    }
+    const settlements = computeSettlements(balance);
+    const overallList = document.getElementById('overallList');
+    if (overallList) {
+      overallList.innerHTML = settlements.map((s, i) => `
+        <div class="transfer-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
+            <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
+          </div>
+          <div class="inline-pay" id="pay-form-${i}">
+            <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
+            <input type="date" id="pay-date-${i}" value="${new Date().toISOString().split('T')[0]}">
+            <input type="text" id="pay-note-${i}" placeholder="Notes..." style="grid-column: span 2">
+            <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM</button>
+          </div>
+        </div>
+      `).join('') || "No debts!";
+    }
+    document.getElementById('historyList').innerHTML = allSessions.map(s => `
+        <div class="history-item">
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+                <strong>${s.name}</strong>
+                <button class="pay-btn-sm" onclick="secureEditPrompt('${s.id}')">EDIT</button>
+            </div>
+            ${s.note ? `<div style="font-size:0.75rem; color:var(--accent); margin: 4px 0;">Note: ${s.note}</div>` : ''}
+            <div style="margin-top:5px;">
+                ${(s.players || []).map(p => `
+                    <small style="margin-right:8px; color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
+                        ${p.name}: ${p.amount >= 0 ? '+' : ''}${p.amount}
+                    </small>
+                `).join('')}
+            </div>
+        </div>
     `).join('');
-  }
-
-  const settlements = computeSettlements(balance);
-  const today = new Date().toISOString().split('T')[0];
-  const overallList = document.getElementById('overallList');
-  if (overallList) {
-    overallList.innerHTML = settlements.map((s, i) => `
-      <div class="transfer-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-          <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
-        </div>
-        <div class="inline-pay" id="pay-form-${i}">
-          <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
-          <input type="date" id="pay-date-${i}" value="${today}">
-          <input type="text" id="pay-note-${i}" placeholder="Notes..." style="grid-column: span 2">
-          <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM</button>
-        </div>
-      </div>
-    `).join('') || "No debts!";
-  }
-
-  if (allSessions.length > 0) {
-    const last = allSessions[0];
-    const dateLabel = last.created_at ? last.created_at.toDate().toLocaleDateString() : 'Just now';
-    document.getElementById('latestHeader').innerHTML = `<strong>${last.name}</strong> <small style="color:var(--muted)">${dateLabel}</small>`;
-    document.getElementById('thisList').innerHTML = (last.players || []).map(p => `
-      <div style="font-size:0.85rem; padding:4px 0;">
-        ${p.name}: <span style="color:${p.amount > 0 ? 'var(--green)' : 'var(--red)'}">${p.amount > 0 ? '+' : ''}${p.amount.toFixed(2)}</span>
-      </div>
-    `).join('');
-  }
-
-document.getElementById('historyList').innerHTML = allSessions.map(s => `
-    <div class="history-item">
-        <div style="display:flex; justify-content:space-between; align-items:start;">
-            <strong>${s.name}</strong>
-            <button class="pay-btn-sm" onclick="secureEditPrompt('${s.id}')">EDIT</button>
-        </div>
-        ${s.note ? `<div style="font-size:0.75rem; color:var(--accent); margin: 4px 0;">Note: ${s.note}</div>` : ''}
-        <div style="margin-top:5px;">
-            ${(s.players || []).map(p => `
-                <small style="margin-right:8px; color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
-                    ${p.name}: ${p.amount >= 0 ? '+' : ''}${p.amount}
-                </small>
-            `).join('')}
-        </div>
-    </div>
-`).join('');
 }
 
+// --- SECURE ADMIN EDITING LOGIC (Firebase PIN Check) ---
+function secureEditPrompt(sessionId) {
+    targetEditSessionId = sessionId;
+    document.getElementById('editPinModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    const pinInput = document.getElementById('securePinInput');
+    pinInput.value = '';
+    pinInput.focus();
+}
+
+function closeEditModal() {
+    document.getElementById('editPinModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.getElementById('securePinInput').value = '';
+}
+
+async function verifySecurePin() {
+    const pinInput = document.getElementById('securePinInput');
+    const userPin = pinInput.value;
+    if (!userPin) return;
+
+    try {
+        const doc = await db.collection("settings").doc("app_config").get();
+        const securePin = doc.data().pin; 
+
+        if (userPin === securePin) {
+            closeEditModal(); 
+            loadSessionForEditing(targetEditSessionId); 
+        } else {
+            pinInput.type = "text"; 
+            pinInput.value = "WRONG PIN";
+            pinInput.style.color = "var(--red)";
+            pinInput.style.borderColor = "var(--red)";
+            setTimeout(() => {
+                pinInput.type = "password"; pinInput.value = "";
+                pinInput.style.color = ""; pinInput.style.borderColor = "";
+                pinInput.focus();
+            }, 1500);
+        }
+    } catch (e) {
+        toast("Firebase Error", false);
+    }
+}
+
+function loadSessionForEditing(sessionId) {
+    const session = allSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    show('session'); 
+    editingSessionId = sessionId;
+    document.getElementById('sessionNameInput').value = session.name;
+    document.getElementById('sessionNoteInput').value = session.note || '';
+    document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
+    document.querySelectorAll('.amt').forEach(input => {
+        const pData = session.players.find(p => p.name === input.dataset.name);
+        input.value = pData ? pData.amount : ""; 
+    });
+    updateBalance();
+    document.getElementById('calcBtn').textContent = "Update Session";
+    document.getElementById('cancelEditBtn').style.display = 'block';
+    toast("Editing Mode Active", true);
+}
+
+// Helpers
 function show(p) {
   document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display='none');
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).style.display='block';
   document.getElementById('btn-'+p).classList.add('active');
 }
-
 function showSub(s) {
   document.querySelectorAll('[id^="sub-"]').forEach(el => el.style.display='none');
   document.querySelectorAll('[id^="tabBtn-"]').forEach(el => el.classList.remove('active'));
   document.getElementById('sub-'+s).style.display='block';
   document.getElementById('tabBtn-'+s).classList.add('active');
 }
+function toast(m, s) { 
+  const e = document.getElementById('toast'); 
+  e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; 
+  e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); 
+}
+function togglePayForm(i) { const f = document.getElementById(`pay-form-${i}`); if(f) f.classList.toggle('show'); }
+function computeSettlements(balMap) {
+  let bal = Object.keys(balMap).map(n => ({name:n, bal: Math.round(balMap[n]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
+  const txns = [];
+  while (bal.length > 1) {
+    bal.sort((a,b) => a.bal - b.bal);
+    let d = bal[0], c = bal[bal.length-1];
+    let a = Math.round(Math.min(Math.abs(d.bal), c.bal)*100)/100;
+    if (a > 0) { txns.push({from: d.name, to: c.name, amount: a}); d.bal += a; c.bal -= a; }
+    bal = bal.filter(p => Math.abs(p.bal) > 0.01);
+  }
+  return txns;
+}
+async function addPlayer() {
+  const n = document.getElementById('newPlayerName').value.trim();
+  if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; }
+}
+async function confirmPayment(f, t, i) {
+  const a = parseFloat(document.getElementById(`pay-amt-${i}`).value);
+  const d = document.getElementById(`pay-date-${i}`).value;
+  const n = document.getElementById(`pay-note-${i}`).value;
+  if (!isNaN(a) && a > 0) {
+    await db.collection("payments").add({from:f, to:t, amount:a, date:d || new Date().toISOString().split('T')[0], note:n || ''});
+    toast("Payment Logged!", true);
+  }
+}
+function renderPaymentLog() {
+  const list = document.getElementById('paymentLogList');
+  if (list) list.innerHTML = allPayments.map(p => `<div class="history-item"> <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div> <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: <strong>$${Number(p.amount).toFixed(2)}</strong><br> <small>${p.note || ''}</small> </div>`).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
+}
 
-function toast(m, s) { const e = document.getElementById('toast'); e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); }
-
+// Auto-login check
 if (localStorage.getItem(PIN_KEY) === "4604") {
   document.getElementById('pinInput').value = "4604";
   checkPin();
 }
-let targetEditSessionId = null; // Temporary storage
-
-// 1. Opens the PIN Modal from the History tab
-function secureEditPrompt(sessionId) {
-    targetEditSessionId = sessionId; // Save the ID to use AFTER the PIN is verified
-    document.getElementById('editPinModal').style.display = 'block';
-    document.getElementById('modalOverlay').style.display = 'block';
-    
-    const pinInput = document.getElementById('securePinInput');
-    pinInput.value = ''; // Clear old entries
-    pinInput.focus();
-}
-
-// 2. Closes the PIN Modal
-function closeEditModal() {
-    document.getElementById('editPinModal').style.display = 'none';
-    document.getElementById('modalOverlay').style.display = 'none';
-    document.getElementById('securePinInput').value = '';
-    targetEditSessionId = null;
-}
-
-// 3. Verifies against Firebase and handles the error UI
-async function verifySecurePin() {
-    const pinInput = document.getElementById('securePinInput');
-    const userPin = pinInput.value;
-    
-    if (!userPin) return;
-
-    try {
-        // Fetch Admin PIN from Firebase
-        const doc = await db.collection("settings").doc("app_config").get();
-        const securePin = doc.data().pin; 
-
-        if (userPin === securePin) {
-            closeEditModal(); 
-            loadSessionForEditing(targetEditSessionId); // Only load if PIN matches
-        } else {
-            // INCORRECT PIN UI: Show message inside the input box
-            pinInput.type = "text"; 
-            pinInput.value = "WRONG PIN";
-            pinInput.style.color = "var(--red)";
-            pinInput.style.borderColor = "var(--red)";
-            
-            // Revert back to normal password dots after 1.5 seconds
-            setTimeout(() => {
-                pinInput.type = "password";
-                pinInput.value = "";
-                pinInput.style.color = ""; // Resets to your CSS default
-                pinInput.style.borderColor = "";
-                pinInput.focus();
-            }, 1500);
-        }
-    } catch (e) {
-        console.error("Firebase Auth Error:", e);
-        toast("Connection Error - Cannot Verify PIN", false);
-    }
-}
-
-// 4. Executes the jump and populates the data
-function loadSessionForEditing(sessionId) {
-    const session = allSessions.find(s => s.id === sessionId);
-    if (!session) return;
-
-    // JUMP TO SESSION TAB
-    show('session'); 
-    
-    editingSessionId = sessionId;
-    document.getElementById('sessionNameInput').value = session.name;
-    document.getElementById('sessionNoteInput').value = session.note || '';
-
-    // Show all players
-    document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
-
-    // Fill in amounts
-    document.querySelectorAll('.amt').forEach(input => {
-        const pData = session.players.find(p => p.name === input.dataset.name);
-        input.value = pData ? pData.amount : ""; 
-    });
-
-    updateBalance();
-    document.getElementById('calcBtn').textContent = "Update Session";
-    
-    // Safety check: Only show the cancel button if you actually added it to your HTML
-    const cancelBtn = document.getElementById('cancelEditBtn');
-    if (cancelBtn) {
-        cancelBtn.style.display = 'block';
-    }
-    
-    toast("Editing Mode Active", true);
-}
-
 </script>
 </body>
 </html>
