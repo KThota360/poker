@@ -210,37 +210,41 @@ function computeSettlements(balMap) {
 
 async function submitSession() {
     const pData = [];
-    const sessionNote = document.getElementById('sessionNoteInput').value.trim(); // Get note
+    const sessionNote = document.getElementById('sessionNoteInput').value.trim();
+    const sessionName = document.getElementById('sessionNameInput').value;
 
     document.querySelectorAll('.amt').forEach(el => {
-        const val = el.value;
-        if(val !== "") {
-            pData.push({ name: el.dataset.name, amount: parseFloat(val) || 0 });
+        if(el.value !== "") {
+            pData.push({ name: el.dataset.name, amount: parseFloat(el.value) || 0 });
         }
     });
 
-    if (pData.length === 0) {
-        toast("No players added to session", false);
-        return;
+    if (pData.length === 0) return;
+
+    const sessionData = {
+        name: sessionName || ("Session " + new Date().toLocaleDateString()),
+        note: sessionNote,
+        players: pData,
+        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (editingSessionId) {
+        // Update existing document in Firebase
+        await db.collection("sessions").doc(editingSessionId).update(sessionData);
+        editingSessionId = null;
+        document.getElementById('calcBtn').textContent = "Save Session";
+        toast("Session Updated!", true);
+    } else {
+        // Create new document
+        sessionData.created_at = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection("sessions").add(sessionData);
+        toast("Session Saved!", true);
     }
 
-    await db.collection("sessions").add({
-        name: document.getElementById('sessionNameInput').value || ("Session " + new Date().toLocaleDateString()),
-        note: sessionNote, // Save the note to the database
-        players: pData,
-        created_at: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    toast("Session Saved", true);
-    
-    // Clear the inputs
-    document.getElementById('sessionNameInput').value = '';
-    document.getElementById('sessionNoteInput').value = ''; 
-    document.querySelectorAll('.amt').forEach(el => el.value = '');
-    
+    resetSessionUI();
     show('results');
 }
-
+  
 async function addPlayer() {
   const name = document.getElementById('newPlayerName').value.trim();
   if (!name) return;
@@ -370,9 +374,9 @@ document.getElementById('historyList').innerHTML = allSessions.map(s => `
     <div class="history-item">
         <div style="display:flex; justify-content:space-between; align-items:start;">
             <strong>${s.name}</strong>
+            <button class="pay-btn-sm" onclick="secureEditPrompt('${s.id}')">EDIT</button>
         </div>
         ${s.note ? `<div style="font-size:0.75rem; color:var(--accent); margin: 4px 0;">Note: ${s.note}</div>` : ''}
-        
         <div style="margin-top:5px;">
             ${(s.players || []).map(p => `
                 <small style="margin-right:8px; color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">
@@ -403,6 +407,48 @@ function toast(m, s) { const e = document.getElementById('toast'); e.textContent
 if (localStorage.getItem(PIN_KEY) === "4604") {
   document.getElementById('pinInput').value = "4604";
   checkPin();
+}
+let editingSessionId = null; 
+
+async function secureEditPrompt(sessionId) {
+    const userPin = prompt("Enter Secure Admin PIN to edit:");
+    if (!userPin) return;
+
+    try {
+        // Fetch the secure PIN from Firebase
+        const doc = await db.collection("settings").doc("app_config").get();
+        const securePin = doc.data().pin;
+
+        if (userPin === securePin) {
+            loadSessionForEditing(sessionId);
+        } else {
+            toast("Unauthorized: Secure PIN incorrect", false);
+        }
+    } catch (e) {
+        toast("Error verifying PIN", false);
+    }
+}
+
+function loadSessionForEditing(sessionId) {
+    const session = allSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    show('session');
+    editingSessionId = sessionId;
+    
+    document.getElementById('sessionNameInput').value = session.name;
+    document.getElementById('sessionNoteInput').value = session.note || '';
+    
+    // Show all players and fill their previous values
+    document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
+    document.querySelectorAll('.amt').forEach(input => {
+        const pData = session.players.find(p => p.name === input.dataset.name);
+        input.value = pData ? pData.amount : ""; 
+    });
+
+    updateBalance();
+    document.getElementById('calcBtn').textContent = "Update Session";
+    toast("Editing Mode Active", true);
 }
 </script>
 </body>
