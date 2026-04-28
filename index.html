@@ -71,7 +71,10 @@
       <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled style="flex: 2;">Save Session</button>
       <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
     </div>  
-    <button id="cancelEditBtn" onclick="cancelEditing()" style="display:none; width:100%; margin-top:10px; background:transparent; color:var(--red); border:1px solid var(--red); padding:10px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit Mode</button>
+    <div id="editControls" style="display:none; margin-top:10px; display: flex; gap: 10px;">
+      <button onclick="deleteSession()" style="flex:1; background:var(--red); color:white; border:none; padding:10px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
+      <button onclick="cancelEditing()" style="flex:1; background:transparent; color:var(--text); border:1px solid #444; padding:10px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit</button>
+    </div>
   </div>
 
   <div id="page-results" class="card" style="display:none;">
@@ -101,8 +104,11 @@
         <input type="number" id="editPayAmt" step="0.01" style="width:100%; box-sizing:border-box;">
         <input type="date" id="editPayDate" style="width:100%; box-sizing:border-box;">
         <input type="text" id="editPayNote" placeholder="Note..." style="grid-column: span 2; width:100%; box-sizing:border-box;">
-        <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px;">Update</button>
-        <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; background:transparent !important; border:1px solid #444;">Cancel</button>
+       <div style="grid-column: span 2; display: flex; gap: 8px;">
+    <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px; flex:2;">Update</button>
+    <button class="calc-btn" onclick="deletePaymentEdit()" style="margin-top:5px; flex:1; background:var(--red) !important;">Delete</button>
+    <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; flex:1; background:transparent !important; border:1px solid #444;">Cancel</button>
+</div>
       </div>
     </div>
     
@@ -231,6 +237,7 @@ async function submitSession() {
         editingSessionId = null;
         document.getElementById('calcBtn').textContent = "Save Session";
         document.getElementById('cancelEditBtn').style.display = 'none';
+        document.getElementById('editControls').style.display = 'none';
         toast("Session Updated!", true);
     } else {
         sessionData.created_at = firebase.firestore.FieldValue.serverTimestamp();
@@ -246,10 +253,31 @@ function cancelEditing() {
     editingSessionId = null;
     document.getElementById('calcBtn').textContent = "Save Session";
     document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('editControls').style.display = 'none';
     resetSessionUI();
     toast("Edit Cancelled", false);
 }
 
+async function deleteSession() {
+    if (!editingSessionId) return;
+
+    if (confirm("Permanently delete this entire session? This will recalculate all player standings.")) {
+        try {
+            await db.collection("sessions").doc(editingSessionId).delete();
+            editingSessionId = null;
+            resetSessionUI();
+            
+            // Hide the edit controls and reset button text
+            document.getElementById('editControls').style.display = 'none';
+            document.getElementById('calcBtn').textContent = "Save Session";
+            
+            toast("Session Deleted", true);
+            show('results'); // Take user back to results to see updated math
+        } catch (e) {
+            toast("Error deleting session", false);
+        }
+    }
+}
 // --- PLAYER LOGIC ---
 function renderPlayers() {
     const grid = document.getElementById('playersGrid'),
@@ -424,19 +452,21 @@ async function verifySecurePin() {
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
+    
     show('session'); 
     editingSessionId = sessionId;
-    document.getElementById('sessionNameInput').value = session.name;
-    document.getElementById('sessionNoteInput').value = session.note || '';
-    document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
-    document.querySelectorAll('.amt').forEach(input => {
-        const pData = session.players.find(p => p.name === input.dataset.name);
-        input.value = pData ? pData.amount : ""; 
-    });
-    updateBalance();
+    
+    // ... (Your existing code to fill inputs and update balance) ...
+
     document.getElementById('calcBtn').textContent = "Update Session";
-    document.getElementById('cancelEditBtn').style.display = 'block';
-    toast("Editing Mode Active", true);
+    
+    // Show the new Edit Controls (Delete/Cancel)
+    document.getElementById('editControls').style.display = 'flex';
+    // Hide the old single cancel button if you still have it
+    const oldCancel = document.getElementById('cancelEditBtn');
+    if(oldCancel) oldCancel.style.display = 'none';
+
+    toast("Editing Session", true);
 }
 
 // 4b. Load Payment Data into Payment Tab
@@ -480,6 +510,21 @@ async function savePaymentEdit() {
     toast("Payment Updated", true);
 }
 
+  async function deletePaymentEdit() {
+    if (!editingPaymentId) return;
+    
+    // Add a quick confirmation so you don't accidentally click it
+    if (confirm("Are you sure you want to delete this payment record entirely?")) {
+        try {
+            await db.collection("payments").doc(editingPaymentId).delete();
+            cancelPaymentEdit(); // Hides the form and clears the ID
+            toast("Payment Deleted", true);
+        } catch (e) {
+            toast("Error deleting payment", false);
+        }
+    }
+}
+  
 function cancelPaymentEdit() {
     editingPaymentId = null;
     document.getElementById('editPaymentForm').style.display = 'none';
