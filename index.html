@@ -465,24 +465,30 @@ function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    show('session');
-    editingSessionId = sessionId;
+    // 1. Switch the UI to the session tab immediately
+    show('session'); 
     
+    editingSessionId = sessionId;
     document.getElementById('sessionNameInput').value = session.name;
     document.getElementById('sessionNoteInput').value = session.note || '';
-    
-    // Show all players and fill their previous values
+
+    // 2. Make sure all players are visible
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
+
+    // 3. Populate the amounts
     document.querySelectorAll('.amt').forEach(input => {
         const pData = session.players.find(p => p.name === input.dataset.name);
         input.value = pData ? pData.amount : ""; 
     });
 
+    // 4. Update balance and UI buttons
     updateBalance();
     document.getElementById('calcBtn').textContent = "Update Session";
-    toast("Editing Mode Active", true);
     document.getElementById('cancelEditBtn').style.display = 'block';
-}
+    
+    toast("Editing Mode Active", true);
+}  
+
 </script>
 </body>
 </html>
