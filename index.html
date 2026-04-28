@@ -18,7 +18,7 @@
   .player-row { display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid #252a3a; border-radius:10px; padding:10px 14px; margin-bottom:8px; }
   .player-name-label { flex:1; font-weight:600; color:#fff; }
   input { background:#222 !important; color:white !important; border:1px solid #444; padding:8px; border-radius:6px; outline:none; font-family: inherit; }
-  .calc-btn { background:#4CAF50 !important; color:white !important; border:none; border-radius:10px; cursor:pointer; font-weight:700; padding:13px; width:100%; margin-top:16px; }
+  .calc-btn { background:#4CAF50 !important; color:white !important; border:none; border-radius:10px; cursor:pointer; font-weight:700; padding:13px; width:100%; margin-top:16px; transition: 0.2s; }
   .calc-btn:disabled { opacity:0.4; cursor:not-allowed; }
   .transfer-card { background:var(--surface2); border-left:4px solid var(--accent); padding:12px; margin-bottom:10px; border-radius:4px; font-family:'JetBrains Mono'; position: relative; }
   .payer { color:var(--red); font-weight:600; }
@@ -75,7 +75,7 @@
     </div>  
     
     <div id="editControls" style="display:none; margin-top:10px; gap: 10px;">
-      <button onclick="deleteSession()" style="flex:1; background:var(--red) !important; color:white; border:none; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
+      <button id="sessionDeleteBtn" onclick="deleteSession()" style="flex:1; background:var(--red) !important; color:white; border:none; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
       <button onclick="cancelEditing()" style="flex:1; background:transparent !important; color:var(--text); border:1px solid #444; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit</button>
     </div>
   </div>
@@ -109,7 +109,7 @@
         <input type="text" id="editPayNote" placeholder="Note..." style="grid-column: span 2; width:100%; box-sizing:border-box;">
         <div style="grid-column: span 2; display: flex; gap: 8px;">
             <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px; flex:2;">Update</button>
-            <button class="calc-btn" onclick="deletePaymentEdit()" style="margin-top:5px; flex:1; background:var(--red) !important;">Delete</button>
+            <button id="payDeleteBtn" class="calc-btn" onclick="deletePaymentEdit()" style="margin-top:5px; flex:1; background:var(--red) !important;">Delete</button>
             <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; flex:1; background:transparent !important; border:1px solid #444;">Cancel</button>
         </div>
       </div>
@@ -118,9 +118,12 @@
   </div>
 
   <div id="page-players" class="card" style="display:none;">
+    <div style="font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">👥 Manage Roster</div>
     <div id="groupList"></div>
-    <input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;">
-    <button class="calc-btn" onclick="addPlayer()">Add Player</button>
+    <div style="background:var(--surface2); padding:15px; border-radius:12px; margin-top:15px; border:1px solid #252a3a;">
+        <input type="text" id="newPlayerName" placeholder="New Player Name" style="width:100%; box-sizing:border-box; margin-bottom:10px;">
+        <button class="calc-btn" onclick="addPlayer()" style="margin-top:0;">Add Player</button>
+    </div>
   </div>
 
   <div id="editPinModal" class="card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1001; width:300px; text-align:center; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
@@ -153,10 +156,13 @@ const PIN_KEY = "poker_pin";
   
 // --- GLOBALS ---
 let editingSessionId = null;      
-let targetEditSessionId = null;   
+let targetEditId = null;   
 let editingPaymentId = null;
 let currentEditType = 'session';  
 let players = [], allSessions = [], allPayments = [];
+
+// Confirmation States
+let conf = { session: false, payment: false, player: null };
 
 // --- AUTH ---
 function checkPin() {
@@ -203,6 +209,10 @@ function updateAllMath() {
 // --- SESSION ACTIONS ---
 function resetSessionUI() {
     editingSessionId = null;
+    conf.session = false;
+    const btn = document.getElementById('sessionDeleteBtn');
+    if(btn) { btn.textContent = "Delete Session"; btn.style.background = "var(--red)"; }
+
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
     document.querySelectorAll('.amt').forEach(input => input.value = '');
     document.getElementById('sessionNameInput').value = '';
@@ -248,14 +258,25 @@ function cancelEditing() {
 
 async function deleteSession() {
     if (!editingSessionId) return;
-    if (confirm("Permanently delete this entire session? This will recalculate all player standings.")) {
-        try {
-            await db.collection("sessions").doc(editingSessionId).delete();
-            resetSessionUI();
-            toast("Session Deleted", true);
-            show('results');
-        } catch (e) { toast("Error deleting session", false); }
+    const btn = document.getElementById('sessionDeleteBtn');
+
+    if (!conf.session) {
+        conf.session = true;
+        btn.textContent = "Confirm Delete?";
+        btn.style.background = "#ff0000";
+        setTimeout(() => {
+            conf.session = false;
+            if(btn) { btn.textContent = "Delete Session"; btn.style.background = "var(--red)"; }
+        }, 4000);
+        return;
     }
+
+    try {
+        await db.collection("sessions").doc(editingSessionId).delete();
+        resetSessionUI();
+        toast("Session Deleted", true);
+        show('results');
+    } catch (e) { toast("Error deleting session", false); }
 }
 
 function loadSessionForEditing(sessionId) {
@@ -270,13 +291,13 @@ function loadSessionForEditing(sessionId) {
     
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
     document.querySelectorAll('.amt').forEach(input => {
-        const pData = session.players.find(p => p.name === input.dataset.name);
+        const pData = (session.players || []).find(p => p.name === input.dataset.name);
         input.value = pData ? pData.amount : ""; 
     });
 
     document.getElementById('calcBtn').textContent = "Update Session";
     document.getElementById('editingHeader').style.display = 'block';
-    document.getElementById('editControls').style.display = 'flex'; // Shows buttons
+    document.getElementById('editControls').style.display = 'flex'; 
     
     updateBalance();
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -294,7 +315,11 @@ function renderPlayers() {
                 <input type="number" class="amt" data-name="${p.name}" placeholder="0" oninput="updateBalance()">
                 <span class="remove-x" onclick="removePlayerFromSession('${p.name}')">×</span>
             </div>`;
-        list.innerHTML += `<div class="player-row"><span class="player-name-label">${p.name}</span></div>`;
+        list.innerHTML += `
+            <div class="player-row" style="background:transparent; border-color:#333;">
+                <span class="player-name-label">${p.name}</span>
+                <button id="del-p-${p.id}" class="pay-btn-sm" style="border-color:var(--red); color:var(--red);" onclick="deletePlayerFromDb('${p.id}')">REMOVE</button>
+            </div>`;
     });
 }
 
@@ -303,6 +328,18 @@ function removePlayerFromSession(name) {
     row.querySelector('.amt').value = "";
     row.style.display = 'none';
     updateBalance();
+}
+
+async function deletePlayerFromDb(playerId) {
+    const btn = document.getElementById(`del-p-${playerId}`);
+    if (conf.player !== playerId) {
+        conf.player = playerId;
+        btn.textContent = "SURE?";
+        setTimeout(() => { if(conf.player === playerId) { conf.player = null; btn.textContent = "REMOVE"; } }, 3000);
+        return;
+    }
+    await db.collection("players").doc(playerId).delete();
+    toast("Player Removed", true);
 }
 
 function updateBalance() {
@@ -357,7 +394,7 @@ function renderResults(lifetime, balance) {
         <div class="history-item">
             <div style="display:flex; justify-content:space-between; align-items:start;">
                 <strong>${s.name}</strong>
-                <button class="pay-btn-sm" onclick="secureEditPrompt('${s.id}')">EDIT</button>
+                <button class="pay-btn-sm" onclick="secureEditPrompt('${s.id}', 'session')">EDIT</button>
             </div>
             ${s.note ? `<div style="font-size:0.75rem; color:var(--accent); margin: 4px 0;">Note: ${s.note}</div>` : ''}
             <div style="margin-top:5px;">
@@ -368,15 +405,9 @@ function renderResults(lifetime, balance) {
 }
 
 // --- SECURE EDIT ROUTING ---
-function secureEditPrompt(sessionId) {
-    targetEditSessionId = sessionId;
-    currentEditType = 'session';
-    openPinModal();
-}
-
-function securePaymentEditPrompt(paymentId) {
-    targetEditSessionId = paymentId;
-    currentEditType = 'payment';
+function secureEditPrompt(id, type) {
+    targetEditId = id;
+    currentEditType = type;
     openPinModal();
 }
 
@@ -399,8 +430,8 @@ async function verifySecurePin() {
         const doc = await db.collection("settings").doc("app_config").get();
         if (userPin === doc.data().pin) {
             closeEditModal(); 
-            if (currentEditType === 'payment') loadPaymentForEditing(targetEditSessionId);
-            else loadSessionForEditing(targetEditSessionId);
+            if (currentEditType === 'payment') loadPaymentForEditing(targetEditId);
+            else loadSessionForEditing(targetEditId);
         } else {
             pinInput.type = "text"; pinInput.value = "WRONG PIN";
             pinInput.style.color = "var(--red)";
@@ -437,14 +468,33 @@ async function savePaymentEdit() {
 
 async function deletePaymentEdit() {
     if (!editingPaymentId) return;
-    if (confirm("Delete this payment record?")) {
+    const btn = document.getElementById('payDeleteBtn');
+
+    if (!conf.payment) {
+        conf.payment = true;
+        btn.textContent = "Confirm?";
+        btn.style.background = "#ff0000";
+        setTimeout(() => {
+            conf.payment = false;
+            if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; }
+        }, 4000);
+        return;
+    }
+
+    try {
         await db.collection("payments").doc(editingPaymentId).delete();
         cancelPaymentEdit();
         toast("Payment Deleted", true);
-    }
+    } catch (e) { toast("Error deleting payment", false); }
 }
 
-function cancelPaymentEdit() { editingPaymentId = null; document.getElementById('editPaymentForm').style.display = 'none'; }
+function cancelPaymentEdit() { 
+    editingPaymentId = null; 
+    conf.payment = false;
+    const btn = document.getElementById('payDeleteBtn');
+    if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; }
+    document.getElementById('editPaymentForm').style.display = 'none'; 
+}
 
 function renderPaymentLog() {
   const list = document.getElementById('paymentLogList');
@@ -453,7 +503,7 @@ function renderPaymentLog() {
     <div class="history-item">
       <div style="display:flex; justify-content:space-between; align-items:start;">
         <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
-        <button class="pay-btn-sm" onclick="securePaymentEditPrompt('${p.id}')">EDIT</button>
+        <button class="pay-btn-sm" onclick="secureEditPrompt('${p.id}', 'payment')">EDIT</button>
       </div>
       <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: <strong>$${Number(p.amount).toFixed(2)}</strong><br>
       <small>${p.note || ''}</small>
@@ -466,7 +516,11 @@ function show(p) {
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).style.display='block';
   document.getElementById('btn-'+p).classList.add('active');
-  // If moving to session tab via nav button, and NOT editing, clean the UI
+  
+  // Clear any existing confirmation states when switching tabs
+  conf.session = false; conf.payment = false; conf.player = null;
+  
+  // Essential: Only reset UI if navigating to session but NOT currently editing
   if(p === 'session' && !editingSessionId) resetSessionUI();
 }
 
