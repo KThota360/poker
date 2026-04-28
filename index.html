@@ -105,6 +105,16 @@
 
   <div id="page-log" class="card" style="display:none;"><div id="paymentLogList"></div></div>
   <div id="page-players" class="card" style="display:none;"><div id="groupList"></div><input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;"><button class="calc-btn" onclick="addPlayer()">Add Player</button></div>
+<div id="editPinModal" class="card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1001; width:300px; text-align:center; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+    <h3 style="color:var(--accent); margin-top:0;">Admin Access</h3>
+    <p style="font-size:0.8rem; color:var(--muted)">Enter Secure PIN to edit</p>
+    <input type="password" id="securePinInput" placeholder="••••" style="text-align:center; font-size:1.5rem; letter-spacing:8px; width:100%; margin-bottom:15px; box-sizing:border-box;">
+    <div style="display:flex; gap:10px;">
+        <button class="calc-btn" onclick="verifySecurePin()" style="margin-top:0; flex:2;">Verify</button>
+        <button class="calc-btn" onclick="closeEditModal()" style="margin-top:0; flex:1; background:var(--surface2) !important; border:1px solid #444;">✕</button>
+    </div>
+</div>
+<div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;" onclick="closeEditModal()"></div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -267,6 +277,14 @@ async function confirmPayment(from, to, i) {
   toast("Payment Logged!", true);
 }
 
+function cancelEditing() {
+    editingSessionId = null; // Clear the reference to the old session
+    document.getElementById('calcBtn').textContent = "Save Session"; // Revert button text
+    document.getElementById('cancelEditBtn').style.display = 'none'; // Hide this cancel button
+    resetSessionUI(); // Clear the inputs and show all players
+    toast("Edit Cancelled", false);
+}
+  
 function togglePayForm(i) {
   const form = document.getElementById(`pay-form-${i}`);
   if (form) form.classList.toggle('show');
@@ -408,27 +426,41 @@ if (localStorage.getItem(PIN_KEY) === "4604") {
   document.getElementById('pinInput').value = "4604";
   checkPin();
 }
-let editingSessionId = null; 
+let targetEditSessionId = null; // Temporary storage
 
-async function secureEditPrompt(sessionId) {
-    const userPin = prompt("Enter Secure Admin PIN to edit:");
+function secureEditPrompt(sessionId) {
+    targetEditSessionId = sessionId;
+    document.getElementById('editPinModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    document.getElementById('securePinInput').focus();
+}
+
+function closeEditModal() {
+    document.getElementById('editPinModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.getElementById('securePinInput').value = '';
+    targetEditSessionId = null;
+}
+
+async function verifySecurePin() {
+    const userPin = document.getElementById('securePinInput').value;
     if (!userPin) return;
 
     try {
-        // Fetch the secure PIN from Firebase
         const doc = await db.collection("settings").doc("app_config").get();
         const securePin = doc.data().pin;
 
         if (userPin === securePin) {
-            loadSessionForEditing(sessionId);
+            closeEditModal();
+            loadSessionForEditing(targetEditSessionId);
         } else {
-            toast("Unauthorized: Secure PIN incorrect", false);
+            toast("Incorrect Admin PIN", false);
+            document.getElementById('securePinInput').value = '';
         }
     } catch (e) {
-        toast("Error verifying PIN", false);
+        toast("Connection Error", false);
     }
 }
-
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
@@ -449,6 +481,7 @@ function loadSessionForEditing(sessionId) {
     updateBalance();
     document.getElementById('calcBtn').textContent = "Update Session";
     toast("Editing Mode Active", true);
+    document.getElementById('cancelEditBtn').style.display = 'block';
 }
 </script>
 </body>
