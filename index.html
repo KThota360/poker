@@ -93,7 +93,21 @@
     <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
   </div>
 
-  <div id="page-log" class="card" style="display:none;"><div id="paymentLogList"></div></div>
+<div id="page-log" class="card" style="display:none;">
+  <div id="editPaymentForm" style="display:none; background:var(--surface2); padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--accent);">
+    <h4 style="margin-top:0; color:var(--accent); font-size:0.8rem; text-transform:uppercase;">Edit Payment</h4>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div style="grid-column: span 2; font-size:0.8rem; color:var(--muted);" id="editPayDesc"></div>
+      <input type="number" id="editPayAmt" step="0.01" style="width:100%; box-sizing:border-box;">
+      <input type="date" id="editPayDate" style="width:100%; box-sizing:border-box;">
+      <input type="text" id="editPayNote" placeholder="Note..." style="grid-column: span 2; width:100%; box-sizing:border-box;">
+      <button class="calc-btn" onclick="savePaymentEdit()" style="margin-top:5px;">Update</button>
+      <button class="calc-btn" onclick="cancelPaymentEdit()" style="margin-top:5px; background:transparent !important; border:1px solid #444;">Cancel</button>
+    </div>
+  </div>
+  
+  <div id="paymentLogList"></div>
+</div>
   <div id="page-players" class="card" style="display:none;">
     <div id="groupList"></div>
     <input type="text" id="newPlayerName" placeholder="Name" style="width:100%; margin-top:10px;">
@@ -129,7 +143,9 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
   
-let editingSessionId = null;      
+let editingSessionId = null;    
+let editingPaymentId = null;
+let currentEditType = 'session'; // Default to session
 let targetEditSessionId = null;   
 let players = [], allSessions = [], allPayments = [];
 
@@ -453,7 +469,72 @@ async function confirmPayment(f, t, i) {
 }
 function renderPaymentLog() {
   const list = document.getElementById('paymentLogList');
-  if (list) list.innerHTML = allPayments.map(p => `<div class="history-item"> <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div> <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: <strong>$${Number(p.amount).toFixed(2)}</strong><br> <small>${p.note || ''}</small> </div>`).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
+  if (!list) return;
+  list.innerHTML = allPayments.map(p => `
+    <div class="history-item" id="pay-item-${p.id}">
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div style="font-size:0.7rem; color:var(--muted);">${p.date || 'Recent'}</div>
+        <button class="pay-btn-sm" onclick="securePaymentEditPrompt('${p.id}')">EDIT</button>
+      </div>
+      <span class="payer">${p.from}</span> → <span class="receiver">${p.to}</span>: 
+      <strong>$${Number(p.amount).toFixed(2)}</strong><br>
+      <small>${p.note || ''}</small>
+    </div>
+  `).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
+}
+
+function securePaymentEditPrompt(paymentId) {
+    targetEditSessionId = paymentId;
+    currentEditType = 'payment'; // Tell the PIN verifier we are editing a payment
+    document.getElementById('editPinModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    document.getElementById('securePinInput').focus();
+}
+
+function loadPaymentForEditing(paymentId) {
+    const pay = allPayments.find(p => p.id === paymentId);
+    if (!pay) return;
+
+    editingPaymentId = paymentId;
+    show('log'); // Switch to Payments tab
+    
+    // Fill the Edit Form
+    document.getElementById('editPaymentForm').style.display = 'block';
+    document.getElementById('editPayDesc').innerText = `${pay.from} → ${pay.to}`;
+    document.getElementById('editPayAmt').value = pay.amount;
+    document.getElementById('editPayDate').value = pay.date || new Date().toISOString().split('T')[0];
+    document.getElementById('editPayNote').value = pay.note || '';
+    
+    // Scroll to top to see the form
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+async function savePaymentEdit() {
+    if (!editingPaymentId) return;
+    
+    const amt = parseFloat(document.getElementById('editPayAmt').value);
+    const date = document.getElementById('editPayDate').value;
+    const note = document.getElementById('editPayNote').value;
+
+    if (isNaN(amt) || amt <= 0) {
+        toast("Invalid amount", false);
+        return;
+    }
+
+    await db.collection("payments").doc(editingPaymentId).update({
+        amount: amt,
+        date: date,
+        note: note,
+        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    cancelPaymentEdit();
+    toast("Payment Updated", true);
+}
+
+function cancelPaymentEdit() {
+    editingPaymentId = null;
+    document.getElementById('editPaymentForm').style.display = 'none';
 }
 
 // Auto-login check
