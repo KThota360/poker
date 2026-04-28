@@ -86,6 +86,7 @@
       <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled style="flex: 2;">Save Session</button>
       <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
     </div>  
+    <button id="cancelEditBtn" onclick="cancelEditing()" style="display:none; width:100%; margin-top:10px; background:transparent; color:var(--red); border:1px solid var(--red); padding:10px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit Mode</button>
   </div>
 
   <div id="page-results" class="card" style="display:none;">
@@ -133,7 +134,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
-
+  
+let editingSessionId = null;      // Tracks the session currently being edited
+let targetEditSessionId = null;   // Temporarily holds the ID while the PIN modal is open
 let players = [], allSessions = [], allPayments = [];
 
 function checkPin() {
@@ -428,13 +431,18 @@ if (localStorage.getItem(PIN_KEY) === "4604") {
 }
 let targetEditSessionId = null; // Temporary storage
 
+// 1. Opens the PIN Modal from the History tab
 function secureEditPrompt(sessionId) {
-    targetEditSessionId = sessionId; // Store the ID before opening modal
+    targetEditSessionId = sessionId; // Save the ID to use AFTER the PIN is verified
     document.getElementById('editPinModal').style.display = 'block';
     document.getElementById('modalOverlay').style.display = 'block';
-    document.getElementById('securePinInput').focus();
+    
+    const pinInput = document.getElementById('securePinInput');
+    pinInput.value = ''; // Clear old entries
+    pinInput.focus();
 }
 
+// 2. Closes the PIN Modal
 function closeEditModal() {
     document.getElementById('editPinModal').style.display = 'none';
     document.getElementById('modalOverlay').style.display = 'none';
@@ -442,54 +450,75 @@ function closeEditModal() {
     targetEditSessionId = null;
 }
 
+// 3. Verifies against Firebase and handles the error UI
 async function verifySecurePin() {
-    const userPin = document.getElementById('securePinInput').value;
+    const pinInput = document.getElementById('securePinInput');
+    const userPin = pinInput.value;
+    
     if (!userPin) return;
 
     try {
+        // Fetch Admin PIN from Firebase
         const doc = await db.collection("settings").doc("app_config").get();
-        const securePin = doc.data().pin; // This is "1903" in your Firebase
+        const securePin = doc.data().pin; 
 
         if (userPin === securePin) {
-            closeEditModal();
-            // Now we pass the saved ID to the loading function
-            loadSessionForEditing(targetEditSessionId); 
+            closeEditModal(); 
+            loadSessionForEditing(targetEditSessionId); // Only load if PIN matches
         } else {
-            toast("Incorrect Admin PIN", false);
-            document.getElementById('securePinInput').value = '';
+            // INCORRECT PIN UI: Show message inside the input box
+            pinInput.type = "text"; 
+            pinInput.value = "WRONG PIN";
+            pinInput.style.color = "var(--red)";
+            pinInput.style.borderColor = "var(--red)";
+            
+            // Revert back to normal password dots after 1.5 seconds
+            setTimeout(() => {
+                pinInput.type = "password";
+                pinInput.value = "";
+                pinInput.style.color = ""; // Resets to your CSS default
+                pinInput.style.borderColor = "";
+                pinInput.focus();
+            }, 1500);
         }
     } catch (e) {
-        toast("Connection Error", false);
+        console.error("Firebase Auth Error:", e);
+        toast("Connection Error - Cannot Verify PIN", false);
     }
 }
-  
+
+// 4. Executes the jump and populates the data
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    // 1. Switch the UI to the session tab immediately
+    // JUMP TO SESSION TAB
     show('session'); 
     
     editingSessionId = sessionId;
     document.getElementById('sessionNameInput').value = session.name;
     document.getElementById('sessionNoteInput').value = session.note || '';
 
-    // 2. Make sure all players are visible
+    // Show all players
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
 
-    // 3. Populate the amounts
+    // Fill in amounts
     document.querySelectorAll('.amt').forEach(input => {
         const pData = session.players.find(p => p.name === input.dataset.name);
         input.value = pData ? pData.amount : ""; 
     });
 
-    // 4. Update balance and UI buttons
     updateBalance();
     document.getElementById('calcBtn').textContent = "Update Session";
-    document.getElementById('cancelEditBtn').style.display = 'block';
+    
+    // Safety check: Only show the cancel button if you actually added it to your HTML
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    if (cancelBtn) {
+        cancelBtn.style.display = 'block';
+    }
     
     toast("Editing Mode Active", true);
-}  
+}
 
 </script>
 </body>
