@@ -54,10 +54,30 @@
 
 <div id="main-app" style="display:none;">
   <div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px;">
-    <button class="nav-tab active" id="btn-results" onclick="show('results')">📊 Results</button>
-    <button class="nav-tab" id="btn-session" onclick="show('session')">🎮 Session</button>
+    <button class="nav-tab active" id="btn-session" onclick="show('session')">🎮 Session</button>
+    <button class="nav-tab" id="btn-results" onclick="show('results')">📊 Results</button>
     <button class="nav-tab" id="btn-log" onclick="show('log')">💰 Payments</button>
     <button class="nav-tab" id="btn-players" onclick="show('players')">👥 Players</button>
+  </div>
+
+  <div id="page-session" class="card">
+    <div id="editingHeader" style="display:none; text-align:center; background:var(--accent); color:#000; padding:5px; border-radius:8px; margin-bottom:15px; font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">⚠️ Editing Session Mode</div>
+    
+    <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:8px; box-sizing:border-box;">
+    <input type="text" id="sessionNoteInput" placeholder="Add a note ($$ Tables taken, Banker...)" style="width:100%; margin-bottom:15px; box-sizing:border-box; font-size: 0.8rem; opacity: 0.8;">
+    
+    <div id="playersGrid">Loading...</div>
+    <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
+    
+    <div style="display: flex; gap: 10px;">
+      <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled style="flex: 2;">Save Session</button>
+      <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
+    </div>  
+    
+    <div id="editControls" style="display:none; margin-top:10px; gap: 10px;">
+      <button id="sessionDeleteBtn" onclick="deleteSession()" style="flex:1; background:var(--red) !important; color:white; border:none; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
+      <button onclick="cancelEditing()" style="flex:1; background:transparent !important; color:var(--text); border:1px solid #444; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit</button>
+    </div>
   </div>
 
   <div id="page-results" class="card" style="display:none;">
@@ -77,26 +97,6 @@
     <div id="sub-overall" style="display:none;"><div id="overallList"></div></div>
     <div id="sub-this" style="display:none;"><div id="latestHeader" style="margin-bottom:10px;"></div><div id="thisList"></div></div>
     <div id="sub-history" style="display:none;"><div id="historyList"></div></div>
-  </div>
-
-    <div id="page-session" class="card">
-    <div id="editingHeader" style="display:none; text-align:center; background:var(--accent); color:#000; padding:5px; border-radius:8px; margin-bottom:15px; font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">⚠️ Editing Session Mode</div>
-    
-    <input type="text" id="sessionNameInput" placeholder="Session Name (optional)" style="width:100%; margin-bottom:8px; box-sizing:border-box;">
-    <input type="text" id="sessionNoteInput" placeholder="Add a note ($$ Tables taken, Banker...)" style="width:100%; margin-bottom:15px; box-sizing:border-box; font-size: 0.8rem; opacity: 0.8;">
-    
-    <div id="playersGrid">Loading...</div>
-    <div id="balanceIndicator" style="text-align:center; padding:10px; font-size:0.8rem; font-family:'JetBrains Mono'; margin-top:12px; border-radius:8px; background:rgba(255,255,255,0.05);">Balanced (0 players)</div>
-    
-    <div style="display: flex; gap: 10px;">
-      <button class="calc-btn" id="calcBtn" onclick="submitSession()" disabled style="flex: 2;">Save Session</button>
-      <button class="calc-btn" onclick="resetSessionUI()" style="flex: 1; background: var(--surface2) !important; border: 1px solid #444;">Reset</button>
-    </div>  
-    
-    <div id="editControls" style="display:none; margin-top:10px; gap: 10px;">
-      <button id="sessionDeleteBtn" onclick="deleteSession()" style="flex:1; background:var(--red) !important; color:white; border:none; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Delete Session</button>
-      <button onclick="cancelEditing()" style="flex:1; background:transparent !important; color:var(--text); border:1px solid #444; padding:13px; border-radius:10px; font-weight:700; cursor:pointer;">Cancel Edit</button>
-    </div>
   </div>
 
   <div id="page-log" class="card" style="display:none;">
