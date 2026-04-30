@@ -20,10 +20,10 @@
     background:var(--bg); 
     color:var(--text); 
     font-family:'Syne', sans-serif; 
-    padding:12px; /* Tighter padding for mobile */
+    padding:12px; 
     margin: 0;
     padding-bottom: 80px;
-    overflow-x: hidden; /* Prevents side-scrolling */
+    overflow-x: hidden; 
   }
 
   h1 { font-size:1.8rem; font-weight:800; text-align:center; color:var(--accent); margin-bottom:4px; margin-top: 10px; }
@@ -42,13 +42,13 @@
     width: 100%; 
     margin-left:auto; 
     margin-right:auto;
-    overflow: hidden; /* Contains children */
+    overflow: hidden; 
   }
 
-  /* SESSION ROW FIX: Wraps on small screens */
+  /* FIX: Session row wraps on small screens */
   .player-row { 
     display:flex; 
-    flex-wrap: wrap; /* Allows name and amount to stack on tiny screens */
+    flex-wrap: wrap; 
     align-items:center; 
     gap:10px; 
     background:var(--surface2); 
@@ -60,11 +60,11 @@
   }
 
   .player-name-label { 
-    flex: 1 1 120px; /* Base width of 120px, but grows to fill */
+    flex: 1 1 120px; 
     font-weight:600; 
     color:#fff; 
     font-size: 0.9rem;
-    white-space: normal; /* Allows wrapping if name is very long */
+    white-space: normal; 
   }
 
   input { 
@@ -77,7 +77,6 @@
     font-family: inherit;
   }
 
-  /* Fixed maximum width for amount inputs */
   .amt { width: 100px; flex-shrink: 0; text-align: right; }
 
   .calc-btn { background:#4CAF50 !important; color:white !important; border:none; border-radius:10px; cursor:pointer; font-weight:700; padding:13px; width:100%; margin-top:16px; transition: 0.2s; }
@@ -89,7 +88,7 @@
   
   .pay-btn-sm { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
   
-  /* HISTORY ITEM FIX: Uses flex wrapping for player data */
+  /* FIX: History wrapping chips */
   .history-item { background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:8px; border-left: 3px solid #444; font-family:'JetBrains Mono'; font-size: 0.85rem; }
   
   .history-players-grid {
@@ -122,7 +121,7 @@
 
   @media (max-width: 450px) {
     .nav-tab { font-size: 0.55rem; padding: 8px 2px; }
-    .amt { width: 100%; text-align: left; } /* Drop input to next line on very small phones */
+    .amt { width: 100%; text-align: left; } 
     .player-row { flex-direction: column; align-items: stretch; }
     .remove-x { align-self: flex-end; margin-top: -30px; }
   }
@@ -230,7 +229,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-// --- FIREBASE INITIALIZATION ---
+// --- FIREBASE CONFIG ---
 const firebaseConfig = {
   apiKey: "AIzaSyDuPM_MChOtI58CN7Em91NC2ujQCZzScjE",
   authDomain: "poker-settlement-12cb2.firebaseapp.com",
@@ -243,7 +242,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PIN_KEY = "poker_pin";
   
-// --- STATE MANAGEMENT ---
+// --- STATE ---
 let editingSessionId = null;      
 let targetEditId = null;   
 let editingPaymentId = null;
@@ -251,7 +250,7 @@ let currentEditType = 'session';
 let players = [], allSessions = [], allPayments = [];
 let conf = { session: false, payment: false, player: null };
 
-// --- LOGIN FLOW ---
+// --- LOGIN ---
 function checkPin() {
   const pin = document.getElementById('pinInput').value;
   if (pin === "4604") {
@@ -278,7 +277,7 @@ function startListeners() {
   });
 }
 
-// --- CALCULATION LOGIC ---
+// --- MATH ---
 function updateAllMath() {
   const lifetime = {}, balance = {};
   allSessions.forEach(s => {
@@ -294,7 +293,7 @@ function updateAllMath() {
   renderResults(lifetime, balance);
 }
 
-// --- SESSION HANDLERS ---
+// --- SESSION LOGIC ---
 function resetSessionUI() {
     editingSessionId = null;
     conf.session = false;
@@ -381,7 +380,7 @@ function loadSessionForEditing(sessionId) {
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
-// --- PLAYER & BALANCE UI ---
+// --- PLAYER UI ---
 function renderPlayers() {
     const grid = document.getElementById('playersGrid'), list = document.getElementById('groupList');
     grid.innerHTML = ''; list.innerHTML = '';
@@ -431,7 +430,7 @@ function updateBalance() {
     document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
 
-// --- RESULTS & HISTORY VIEW ---
+// --- RENDER VIEWS ---
 function renderResults(lifetime, balance) {
     const sBody = document.getElementById('standingsTableBody');
     if (sBody) {
@@ -444,7 +443,7 @@ function renderResults(lifetime, balance) {
         <div class="transfer-card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 8px;">
             <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-            <button class="pay-btn-sm" onclick="togglePayForm(${i})">Mark Payment</button>
+            <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
           </div>
           <div class="inline-pay" id="pay-form-${i}">
             <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
@@ -454,7 +453,6 @@ function renderResults(lifetime, balance) {
           </div>
         </div>`).join('') || "No debts!";
     
-    // Latest Session View
     if (allSessions.length > 0) {
         const last = allSessions[0];
         let dateLabel = last.created_at?.toDate().toLocaleDateString() || last.updated_at?.toDate().toLocaleDateString() || 'Recently';
@@ -465,7 +463,6 @@ function renderResults(lifetime, balance) {
           </div>`).join('');
     }
 
-    // History View Fix: Uses chips and flex-wrapping
     document.getElementById('historyList').innerHTML = allSessions.map(s => {
         const dLabel = s.created_at?.toDate().toLocaleDateString() || s.updated_at?.toDate().toLocaleDateString() || 'Recently';
         return `
@@ -486,7 +483,7 @@ function renderResults(lifetime, balance) {
     }).join('');
 }
 
-// --- ADMIN SECURE FLOW ---
+// --- SECURE FLOW ---
 function secureEditPrompt(id, type) { targetEditId = id; currentEditType = type; openPinModal(); }
 function openPinModal() { document.getElementById('editPinModal').style.display = 'block'; document.getElementById('modalOverlay').style.display = 'block'; const pinInput = document.getElementById('securePinInput'); pinInput.value = ''; pinInput.focus(); }
 function closeEditModal() { document.getElementById('editPinModal').style.display = 'none'; document.getElementById('modalOverlay').style.display = 'none'; }
@@ -506,7 +503,7 @@ async function verifySecurePin() {
     } catch (e) { toast("Firebase Error", false); }
 }
 
-// --- PAYMENT LOG ACTIONS ---
+// --- PAYMENT ACTIONS ---
 function loadPaymentForEditing(paymentId) {
     const pay = allPayments.find(p => p.id === paymentId);
     if (!pay) return;
@@ -531,7 +528,7 @@ async function savePaymentEdit() {
 async function deletePaymentEdit() {
     if (!editingPaymentId) return;
     const btn = document.getElementById('payDeleteBtn');
-    if (!conf.payment) { conf.payment = true; btn.textContent = "SURE?"; btn.style.background = "#ff0000"; setTimeout(() => { conf.payment = false; if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; } }, 4000); return; }
+    if (!conf.payment) { conf.payment = true; btn.textContent = "Confirm?"; btn.style.background = "#ff0000"; setTimeout(() => { conf.payment = false; if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; } }, 4000); return; }
     await db.collection("payments").doc(editingPaymentId).delete();
     cancelPaymentEdit(); toast("Payment Deleted", true);
 }
@@ -557,7 +554,7 @@ function renderPaymentLog() {
     </div>`).join('') || '<p style="text-align:center; color:var(--muted);">No payments recorded.</p>';
 }
 
-// --- NAVIGATION UTILS ---
+// --- UTILS ---
 function show(p) {
   document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display='none');
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -591,7 +588,6 @@ function computeSettlements(balMap) {
 async function addPlayer() { const n = document.getElementById('newPlayerName').value.trim(); if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; } }
 async function confirmPayment(f, t, i) { const a = parseFloat(document.getElementById(`pay-amt-${i}`).value); if (!isNaN(a) && a > 0) { await db.collection("payments").add({from:f, to:t, amount:a, date:document.getElementById(`pay-date-${i}`).value, note:document.getElementById(`pay-note-${i}`).value || ''}); toast("Payment Logged!", true); } }
 
-// AUTO-LOGIN
 if (localStorage.getItem(PIN_KEY) === "4604") { document.getElementById('pinInput').value = "4604"; checkPin(); }
 </script>
 </body>
