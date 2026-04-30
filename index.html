@@ -8,99 +8,35 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
-  /* GLOBAL MOBILE & OVERFLOW FIXES */
-  * { box-sizing: border-box; }
-
   :root { --bg:#0d0f14; --surface:#151820; --surface2:#1c2030; --accent:#f0c040; --red:#ff5c6a; --green:#3de8a0; --text:#e8eaf2; --muted:#6b7280; }
-  
-  body { 
-    background:var(--bg); 
-    color:var(--text); 
-    font-family:'Syne', sans-serif; 
-    padding:16px; 
-    margin: 0;
-    padding-bottom: 80px;
-  }
-
-  h1 { font-size:1.8rem; font-weight:800; text-align:center; color:var(--accent); margin-bottom:4px; margin-top: 10px; }
-  .subtitle { text-align:center; color:var(--muted); font-size:0.75rem; margin-bottom:24px; }
-  
-  .nav-tab { background:var(--surface); border:1px solid #252a3a; border-radius:10px; color:#888; padding:10px 4px; cursor:pointer; font-weight:700; flex:1; font-size: 0.65rem; text-transform: uppercase; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne', sans-serif; padding:24px 16px 80px; }
+  h1 { font-size:2rem; font-weight:800; text-align:center; color:var(--accent); margin-bottom:4px; }
+  .subtitle { text-align:center; color:var(--muted); font-size:0.75rem; margin-bottom:28px; }
+  .nav-tab { background:var(--surface); border:1px solid #252a3a; border-radius:10px; color:#888; padding:8px 4px; cursor:pointer; font-weight:700; flex:1; font-size: 0.65rem; text-transform: uppercase; }
   .nav-tab.active { background-color:var(--accent) !important; color:#0d0f14 !important; }
-  
-  .card { 
-    background:var(--surface); 
-    border:1px solid #252a3a; 
-    border-radius:14px; 
-    padding:16px; 
-    margin-bottom:20px; 
-    max-width:680px; 
-    width: 100%; 
-    margin-left:auto; 
-    margin-right:auto; 
-  }
-
-  .player-row { 
-    display:flex; 
-    align-items:center; 
-    gap:8px; 
-    background:var(--surface2); 
-    border:1px solid #252a3a; 
-    border-radius:10px; 
-    padding:10px; 
-    margin-bottom:8px; 
-    width: 100%;
-  }
-
-  .player-name-label { 
-    flex:1; 
-    font-weight:600; 
-    color:#fff; 
-    font-size: 0.9rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; 
-  }
-
-  input { 
-    background:#222 !important; 
-    color:white !important; 
-    border:1px solid #444; 
-    padding:8px; 
-    border-radius:6px; 
-    outline:none; 
-    font-family: inherit;
-  }
-
-  .amt { width: 85px; flex-shrink: 0; text-align: right; }
-
+  .card { background:var(--surface); border:1px solid #252a3a; border-radius:14px; padding:22px; margin-bottom:20px; max-width:680px; margin-left:auto; margin-right:auto; }
+  .player-row { display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid #252a3a; border-radius:10px; padding:10px 14px; margin-bottom:8px; }
+  .player-name-label { flex:1; font-weight:600; color:#fff; }
+  input { background:#222 !important; color:white !important; border:1px solid #444; padding:8px; border-radius:6px; outline:none; font-family: inherit; }
   .calc-btn { background:#4CAF50 !important; color:white !important; border:none; border-radius:10px; cursor:pointer; font-weight:700; padding:13px; width:100%; margin-top:16px; transition: 0.2s; }
   .calc-btn:disabled { opacity:0.4; cursor:not-allowed; }
-  
-  .transfer-card { background:var(--surface2); border-left:4px solid var(--accent); padding:12px; margin-bottom:10px; border-radius:4px; font-family:'JetBrains Mono'; position: relative; font-size: 0.85rem; }
+  .transfer-card { background:var(--surface2); border-left:4px solid var(--accent); padding:12px; margin-bottom:10px; border-radius:4px; font-family:'JetBrains Mono'; position: relative; }
   .payer { color:var(--red); font-weight:600; }
   .receiver { color:var(--green); font-weight:600; }
-  
-  .pay-btn-sm { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
-  
-  .history-item { background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:8px; border-left: 3px solid #444; font-family:'JetBrains Mono'; font-size: 0.85rem; }
-  
+  .pay-btn-sm { background: transparent; border: 1px solid var(--green); color: var(--green); padding: 4px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
+  .inline-pay { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #252a3a; }
+  .inline-pay.show { display: grid; }
+  .pay-btn-full { grid-column: span 2; background: var(--green); color: #000; border: none; padding: 8px; border-radius: 6px; font-weight: 800; cursor: pointer; }
+  .history-item { background:var(--surface2); padding:12px; border-radius:8px; margin-bottom:8px; border-left: 3px solid #444; font-family:'JetBrains Mono'; }
   .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface2); border:1px solid #252a3a; border-radius:10px; padding:10px 20px; z-index:999; opacity:0; transition:0.3s; pointer-events:none;}
   .toast.show { opacity:1; }
-
   .standings-table { width:100%; color:white; border-collapse: collapse; font-family:'JetBrains Mono'; font-size:0.85rem; margin-bottom: 20px; }
   .standings-table th { border-bottom:1px solid #333; color:var(--accent); text-align:left; padding:8px; }
   .standings-table td { padding:8px; border-bottom:1px solid #222; }
-
-  .remove-x { cursor: pointer; color: #888; font-weight: bold; font-size: 1.2rem; padding: 0 5px; transition: color 0.2s; flex-shrink: 0; }
+  .remove-x { cursor: pointer; color: #888; font-weight: bold; font-size: 1.2rem; padding-left: 10px; transition: color 0.2s; }
   .remove-x:hover { color: var(--red); }
-  
   .unbalanced-text { color: var(--red); font-weight: 800; }
   .balanced-text { color: var(--green); font-weight: 800; }
-
-  @media (max-width: 400px) {
-    .nav-tab { font-size: 0.55rem; padding: 8px 2px; }
-  }
 </style>
 </head>
 <body>
@@ -117,7 +53,7 @@
 </div>
 
 <div id="main-app" style="display:none;">
-  <div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px; width:100%;">
+  <div style="display:flex; gap:4px; max-width:680px; margin:0 auto 20px;">
     <button class="nav-tab active" id="btn-session" onclick="show('session')">🎮 Session</button>
     <button class="nav-tab" id="btn-results" onclick="show('results')">📊 Results</button>
     <button class="nav-tab" id="btn-log" onclick="show('log')">💰 Payments</button>
@@ -205,7 +141,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-// --- FIREBASE CONFIG ---
+// --- FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDuPM_MChOtI58CN7Em91NC2ujQCZzScjE",
   authDomain: "poker-settlement-12cb2.firebaseapp.com",
@@ -224,9 +160,11 @@ let targetEditId = null;
 let editingPaymentId = null;
 let currentEditType = 'session';  
 let players = [], allSessions = [], allPayments = [];
+
+// Confirmation States
 let conf = { session: false, payment: false, player: null };
 
-// --- LOGIN LOGIC ---
+// --- AUTH ---
 function checkPin() {
   const pin = document.getElementById('pinInput').value;
   if (pin === "4604") {
@@ -268,7 +206,7 @@ function updateAllMath() {
   renderResults(lifetime, balance);
 }
 
-// --- SESSION LOGIC ---
+// --- SESSION ACTIONS ---
 function resetSessionUI() {
     editingSessionId = null;
     conf.session = false;
@@ -321,6 +259,7 @@ function cancelEditing() {
 async function deleteSession() {
     if (!editingSessionId) return;
     const btn = document.getElementById('sessionDeleteBtn');
+
     if (!conf.session) {
         conf.session = true;
         btn.textContent = "Confirm Delete?";
@@ -331,6 +270,7 @@ async function deleteSession() {
         }, 4000);
         return;
     }
+
     try {
         await db.collection("sessions").doc(editingSessionId).delete();
         resetSessionUI();
@@ -342,25 +282,31 @@ async function deleteSession() {
 function loadSessionForEditing(sessionId) {
     const session = allSessions.find(s => s.id === sessionId);
     if (!session) return;
+    
     show('session'); 
     editingSessionId = sessionId;
+    
     document.getElementById('sessionNameInput').value = session.name || '';
     document.getElementById('sessionNoteInput').value = session.note || '';
+    
     document.querySelectorAll('.player-row').forEach(row => row.style.display = 'flex');
     document.querySelectorAll('.amt').forEach(input => {
         const pData = (session.players || []).find(p => p.name === input.dataset.name);
         input.value = pData ? pData.amount : ""; 
     });
+
     document.getElementById('calcBtn').textContent = "Update Session";
     document.getElementById('editingHeader').style.display = 'block';
     document.getElementById('editControls').style.display = 'flex'; 
+    
     updateBalance();
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
-// --- ROSTER/PLAYER UI ---
+// --- PLAYER UI ---
 function renderPlayers() {
-    const grid = document.getElementById('playersGrid'), list = document.getElementById('groupList');
+    const grid = document.getElementById('playersGrid'),
+          list = document.getElementById('groupList');
     grid.innerHTML = ''; list.innerHTML = '';
     players.forEach(p => {
         grid.innerHTML += `
@@ -408,7 +354,7 @@ function updateBalance() {
     document.getElementById('calcBtn').disabled = !ok || count < 2;
 }
 
-// --- RESULTS DISPLAY ---
+// --- RESULTS UI ---
 function renderResults(lifetime, balance) {
     const sBody = document.getElementById('standingsTableBody');
     if (sBody) {
@@ -416,12 +362,13 @@ function renderResults(lifetime, balance) {
         <tr><td>${name}</td><td style="text-align:right; color:${lifetime[name]>=0?'var(--green)':'var(--red)'}">${lifetime[name].toFixed(2)}</td></tr>
       `).join('');
     }
+    
     const settlements = computeSettlements(balance);
     document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
         <div class="transfer-card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-            <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
+            <button class="pay-btn-sm" onclick="togglePayForm(${i})">Mark Payment</button>
           </div>
           <div class="inline-pay" id="pay-form-${i}">
             <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
@@ -429,7 +376,8 @@ function renderResults(lifetime, balance) {
             <input type="text" id="pay-note-${i}" placeholder="Notes..." style="grid-column: span 2">
             <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM</button>
           </div>
-        </div>`).join('') || "No debts!";
+        </div>
+      `).join('') || "No debts!";
     
     if (allSessions.length > 0) {
         const last = allSessions[0];
@@ -438,8 +386,10 @@ function renderResults(lifetime, balance) {
         document.getElementById('thisList').innerHTML = (last.players || []).map(p => `
           <div style="font-size:0.85rem; padding:4px 0;">
             ${p.name}: <span style="color:${p.amount >= 0 ? 'var(--green)' : 'var(--red)'}">${p.amount >= 0 ? '+' : ''}${Number(p.amount).toFixed(2)}</span>
-          </div>`).join('');
+          </div>
+        `).join('');
     }
+
     document.getElementById('historyList').innerHTML = allSessions.map(s => `
         <div class="history-item">
             <div style="display:flex; justify-content:space-between; align-items:start;">
@@ -450,30 +400,47 @@ function renderResults(lifetime, balance) {
             <div style="margin-top:5px;">
                 ${(s.players || []).map(p => `<small style="margin-right:8px; color:${p.amount>=0?'var(--green)':'var(--red)'}">${p.name}:${p.amount>=0?'+':''}${p.amount}</small>`).join('')}
             </div>
-        </div>`).join('');
+        </div>
+    `).join('');
 }
 
-// --- SECURE ROUTING & MODAL ---
-function secureEditPrompt(id, type) { targetEditId = id; currentEditType = type; openPinModal(); }
-function openPinModal() { document.getElementById('editPinModal').style.display = 'block'; document.getElementById('modalOverlay').style.display = 'block'; const pinInput = document.getElementById('securePinInput'); pinInput.value = ''; pinInput.focus(); }
-function closeEditModal() { document.getElementById('editPinModal').style.display = 'none'; document.getElementById('modalOverlay').style.display = 'none'; }
+// --- SECURE EDIT ROUTING ---
+function secureEditPrompt(id, type) {
+    targetEditId = id;
+    currentEditType = type;
+    openPinModal();
+}
+
+function openPinModal() {
+    document.getElementById('editPinModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    const pinInput = document.getElementById('securePinInput');
+    pinInput.value = ''; pinInput.focus();
+}
+
+function closeEditModal() {
+    document.getElementById('editPinModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+}
 
 async function verifySecurePin() {
     const pinInput = document.getElementById('securePinInput');
+    const userPin = pinInput.value;
     try {
         const doc = await db.collection("settings").doc("app_config").get();
-        if (pinInput.value === doc.data().pin) {
+        if (userPin === doc.data().pin) {
             closeEditModal(); 
             if (currentEditType === 'payment') loadPaymentForEditing(targetEditId);
             else loadSessionForEditing(targetEditId);
         } else {
-            pinInput.type = "text"; pinInput.value = "WRONG PIN"; pinInput.style.color = "var(--red)";
+            pinInput.type = "text"; pinInput.value = "WRONG PIN";
+            pinInput.style.color = "var(--red)";
             setTimeout(() => { pinInput.type = "password"; pinInput.value = ""; pinInput.style.color = ""; pinInput.focus(); }, 1500);
         }
     } catch (e) { toast("Firebase Error", false); }
 }
 
-// --- PAYMENT LOG ACTIONS ---
+// --- PAYMENT ACTIONS ---
 function loadPaymentForEditing(paymentId) {
     const pay = allPayments.find(p => p.id === paymentId);
     if (!pay) return;
@@ -491,7 +458,10 @@ async function savePaymentEdit() {
     if (!editingPaymentId) return;
     const amt = parseFloat(document.getElementById('editPayAmt').value);
     if (isNaN(amt) || amt <= 0) { toast("Invalid amount", false); return; }
-    await db.collection("payments").doc(editingPaymentId).update({amount: amt, date: document.getElementById('editPayDate').value, note: document.getElementById('editPayNote').value, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection("payments").doc(editingPaymentId).update({
+        amount: amt, date: document.getElementById('editPayDate').value, note: document.getElementById('editPayNote').value,
+        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    });
     cancelPaymentEdit();
     toast("Payment Updated", true);
 }
@@ -499,10 +469,23 @@ async function savePaymentEdit() {
 async function deletePaymentEdit() {
     if (!editingPaymentId) return;
     const btn = document.getElementById('payDeleteBtn');
-    if (!conf.payment) { conf.payment = true; btn.textContent = "Confirm?"; btn.style.background = "#ff0000"; setTimeout(() => { conf.payment = false; if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; } }, 4000); return; }
-    await db.collection("payments").doc(editingPaymentId).delete();
-    cancelPaymentEdit();
-    toast("Payment Deleted", true);
+
+    if (!conf.payment) {
+        conf.payment = true;
+        btn.textContent = "Confirm?";
+        btn.style.background = "#ff0000";
+        setTimeout(() => {
+            conf.payment = false;
+            if(btn) { btn.textContent = "Delete"; btn.style.background = "var(--red)"; }
+        }, 4000);
+        return;
+    }
+
+    try {
+        await db.collection("payments").doc(editingPaymentId).delete();
+        cancelPaymentEdit();
+        toast("Payment Deleted", true);
+    } catch (e) { toast("Error deleting payment", false); }
 }
 
 function cancelPaymentEdit() { 
@@ -533,7 +516,11 @@ function show(p) {
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).style.display='block';
   document.getElementById('btn-'+p).classList.add('active');
+  
+  // Clear any existing confirmation states when switching tabs
   conf.session = false; conf.payment = false; conf.player = null;
+  
+  // Essential: Only reset UI if navigating to session but NOT currently editing
   if(p === 'session' && !editingSessionId) resetSessionUI();
 }
 
@@ -544,8 +531,14 @@ function showSub(s) {
   document.getElementById('tabBtn-'+s).classList.add('active');
 }
 
-function toast(m, s) { const e = document.getElementById('toast'); e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); }
+function toast(m, s) { 
+  const e = document.getElementById('toast'); 
+  e.textContent = m; e.style.color = s ? '#3de8a0' : '#ff5c6a'; 
+  e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 3000); 
+}
+
 function togglePayForm(i) { const f = document.getElementById(`pay-form-${i}`); if(f) f.classList.toggle('show'); }
+
 function computeSettlements(balMap) {
   let bal = Object.keys(balMap).map(n => ({name:n, bal: Math.round(balMap[n]*100)/100})).filter(x => Math.abs(x.bal) > 0.01);
   const txns = [];
@@ -555,12 +548,27 @@ function computeSettlements(balMap) {
     let a = Math.round(Math.min(Math.abs(d.bal), c.bal)*100)/100;
     if (a > 0) { txns.push({from: d.name, to: c.name, amount: a}); d.bal += a; c.bal -= a; }
     bal = bal.filter(p => Math.abs(p.bal) > 0.01);
-  } return txns;
+  }
+  return txns;
 }
 
-async function addPlayer() { const n = document.getElementById('newPlayerName').value.trim(); if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; } }
-async function confirmPayment(f, t, i) { const a = parseFloat(document.getElementById(`pay-amt-${i}`).value); if (!isNaN(a) && a > 0) { await db.collection("payments").add({from:f, to:t, amount:a, date:document.getElementById(`pay-date-${i}`).value, note:document.getElementById(`pay-note-${i}`).value || ''}); toast("Payment Logged!", true); } }
-if (localStorage.getItem(PIN_KEY) === "4604") { document.getElementById('pinInput').value = "4604"; checkPin(); }
+async function addPlayer() {
+  const n = document.getElementById('newPlayerName').value.trim();
+  if (n) { await db.collection("players").add({ name: n }); document.getElementById('newPlayerName').value = ''; }
+}
+
+async function confirmPayment(f, t, i) {
+  const a = parseFloat(document.getElementById(`pay-amt-${i}`).value);
+  if (!isNaN(a) && a > 0) {
+    await db.collection("payments").add({from:f, to:t, amount:a, date:document.getElementById(`pay-date-${i}`).value, note:document.getElementById(`pay-note-${i}`).value || ''});
+    toast("Payment Logged!", true);
+  }
+}
+
+if (localStorage.getItem(PIN_KEY) === "4604") {
+  document.getElementById('pinInput').value = "4604";
+  checkPin();
+}
 </script>
 </body>
 </html>
