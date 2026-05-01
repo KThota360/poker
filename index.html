@@ -8,6 +8,41 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
+  /* Add this to your style block */
+.inline-pay {
+    display: none; /* Hidden by default */
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.inline-pay.show {
+    display: grid; /* Becomes visible when 'PAY' is clicked */
+}
+
+.pay-btn-full {
+    background: var(--green) !important;
+    color: #0d0f14 !important;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cancel-btn-inline {
+    background: transparent !important;
+    color: var(--muted) !important;
+    border: 1px solid #444;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
   /* GLOBAL BOX FIXES */
   * { box-sizing: border-box; }
 
@@ -439,19 +474,23 @@ function renderResults(lifetime, balance) {
       `).join('');
     }
     const settlements = computeSettlements(balance);
-    document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
-        <div class="transfer-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 8px;">
+    // Inside renderResults function, find where settlements are mapped:
+document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
+    <div class="transfer-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
             <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
             <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
-          </div>
-          <div class="inline-pay" id="pay-form-${i}">
-            <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01">
+        </div>
+        
+        <div class="inline-pay" id="pay-form-${i}">
+            <input type="number" id="pay-amt-${i}" value="${s.amount.toFixed(2)}" step="0.01" placeholder="Amount">
             <input type="date" id="pay-date-${i}" value="${new Date().toISOString().split('T')[0]}">
             <input type="text" id="pay-note-${i}" placeholder="Notes..." style="grid-column: span 2">
+            
             <button class="pay-btn-full" onclick="confirmPayment('${s.from}','${s.to}',${i})">CONFIRM</button>
-          </div>
-        </div>`).join('') || "No debts!";
+            <button class="cancel-btn-inline" onclick="togglePayForm(${i})">CANCEL</button>
+        </div>
+    </div>`).join('') || "No debts!";
     
     if (allSessions.length > 0) {
         const last = allSessions[0];
