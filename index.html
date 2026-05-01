@@ -155,33 +155,56 @@
   .balanced-text { color: var(--green); font-weight: 800; }
 
 @media (max-width: 450px) {
-    /* Forces name and input to stay in one row */
     .player-row {
         flex-direction: row !important; 
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 10px;
-        padding: 10px 15px !important;
+        padding: 10px 12px !important;
     }
 
-    /* Makes the name take up the left side */
     .player-name-label {
-        flex: 1;
-        text-align: left;
+        /* This fixes the stacking issue */
+        flex: 1 !important; 
+        min-width: 0; /* Prevents text from pushing width */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 0.9rem;
     }
 
-    /* Shrinks the input box so it fits on the right */
     .amt {
-        width: 70px !important;
-        margin: 0 !important;
+        width: 75px !important;
+        margin: 0 5px !important;
+        flex-shrink: 0; /* Prevents the input from squishing */
     }
 
-    /* Keeps the X button aligned with the row */
     .remove-x {
         margin: 0 !important;
-        padding: 5px !important;
+        flex-shrink: 0;
+    }
+  .inline-pay {
+        grid-template-columns: 1fr 1fr !important; /* Forces 2 columns */
+        gap: 6px !important;
+        padding: 8px !important;
+    }
+
+    /* Force the note to take full width above the buttons */
+    .inline-pay input[type="text"] {
+        grid-column: span 2 !important;
+    }
+
+    .pay-btn-full, .cancel-btn-inline {
+        grid-column: span 1 !important; /* Make buttons half-width */
+        font-size: 0.75rem !important; /* Smaller text for mobile */
+        padding: 8px 2px !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    .inline-pay input {
+        font-size: 0.8rem !important;
+        padding: 6px !important;
     }
 }
 </style>
@@ -503,7 +526,7 @@ document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
     <div class="transfer-card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-            <button class="pay-btn-sm" onclick="togglePayForm(${i})">PAY</button>
+            <button class="pay-btn-sm" onclick="togglePayForm(${i})">MARK PAYMENT</button>
         </div>
         
         <div class="inline-pay" id="pay-form-${i}">
