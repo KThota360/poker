@@ -526,7 +526,7 @@ document.getElementById('overallList').innerHTML = settlements.map((s, i) => `
     <div class="transfer-card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <span><span class="payer">${s.from}</span> → <span class="receiver">${s.to}</span>: <strong>$${s.amount.toFixed(2)}</strong></span>
-            <button class="pay-btn-sm" onclick="togglePayForm(${i})">MARK PAYMENT</button>
+            <button class="pay-btn-sm" onclick="togglePayForm(${i})">Record</button>
         </div>
         
         <div class="inline-pay" id="pay-form-${i}">
